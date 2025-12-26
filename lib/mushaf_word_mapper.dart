@@ -1,6 +1,7 @@
 import 'package:tajweed/cached_tajweed_tokens.dart';
 import 'package:tajweed/mushaf_db_reader.dart';
 import 'package:tajweed/tajweed.dart';
+import 'package:tajweed/tajweed_token.dart';
 import 'package:tajweed/tajweed_word.dart';
 
 /// Maps words from the database to their corresponding Tajweed-colored tokens.
@@ -10,6 +11,9 @@ class MushafWordMapper {
 
   /// Track mapping failures for debugging
   final List<String> mappingWarnings = [];
+
+  /// Hizb/Rub markers that appear in tajweed tokens but not in database
+  static final _hizbMarkerPattern = RegExp(r'^[۞۩]+$');
 
   /// Maps a MushafWord to its corresponding TajweedWord with colored tokens.
   ///
@@ -55,10 +59,7 @@ class MushafWordMapper {
       words = _ayaWordsCache[cacheKey]!;
     } else {
       final ayaTokens = surahTokens[ayahIndex];
-      // Filter out empty words caused by leading/trailing spaces in tokens
-      words = Tajweed.tokensToWords(ayaTokens)
-          .where((w) => w.tokens.any((t) => t.text.trim().isNotEmpty))
-          .toList();
+      words = _processAyaWords(Tajweed.tokensToWords(ayaTokens));
       _ayaWordsCache[cacheKey] = words;
     }
 
@@ -72,6 +73,57 @@ class MushafWordMapper {
     }
 
     return words[wordIndex];
+  }
+
+  /// Process aya words to handle hizb markers:
+  /// - If a word is ONLY a hizb marker, prepend it to the next word
+  /// - This preserves the hizb for rendering but doesn't affect word count
+  List<TajweedWord> _processAyaWords(List<TajweedWord> rawWords) {
+    final result = <TajweedWord>[];
+    TajweedWord? pendingHizb;
+
+    for (final word in rawWords) {
+      final wordText = word.tokens.map((t) => t.text).join('').trim();
+
+      // Skip empty words
+      if (wordText.isEmpty) continue;
+
+      // Check if this is a hizb-only word
+      if (_hizbMarkerPattern.hasMatch(wordText)) {
+        // Store it to prepend to next word
+        pendingHizb = word;
+        continue;
+      }
+
+      // If we have a pending hizb, prepend its tokens to this word
+      if (pendingHizb != null) {
+        final combinedWord = TajweedWord();
+        // Add hizb tokens
+        for (final token in pendingHizb.tokens) {
+          combinedWord.tokens.add(token);
+        }
+        // Add a space token between hizb and word
+        combinedWord.tokens.add(TajweedToken(
+          word.tokens.first.rule,
+          null,
+          null,
+          ' ',
+          0,
+          1,
+          null,
+        ));
+        // Add word tokens
+        for (final token in word.tokens) {
+          combinedWord.tokens.add(token);
+        }
+        result.add(combinedWord);
+        pendingHizb = null;
+      } else {
+        result.add(word);
+      }
+    }
+
+    return result;
   }
 
   /// Clears the internal cache.
