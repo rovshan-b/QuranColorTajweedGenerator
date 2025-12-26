@@ -37,6 +37,9 @@ dependencies:
   path: ^1.8.3
   path_provider: ^2.1.1
 
+  # PDF generation
+  printing: ^5.12.0
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2

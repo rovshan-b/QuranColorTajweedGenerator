@@ -280,6 +280,9 @@ class MushafHtmlGenerator {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
     }
     
     body {
@@ -338,17 +341,17 @@ class MushafHtmlGenerator {
     .line-justified {
       text-align: justify;
       text-align-last: justify;
-      word-spacing: -4px;
+      word-spacing: -5px;
     }
     
     .surah-header {
       text-align: center;
       font-size: ${pageSize.surahFontSize}px;
       font-weight: bold;
-      padding: 15px 0;
-      margin: 10px 0;
+      padding: 8px 0;
+      margin: 5px 0;
       background: linear-gradient(to right, #D4AF37, #F5E6B3, #D4AF37);
-      border-radius: 10px;
+      border-radius: 8px;
       color: #333;
     }
     
@@ -473,6 +476,22 @@ class MushafHtmlGenerator {
         box-shadow: none;
         page-break-after: always;
       }
+      .line {
+        font-size: ${(pageSize.fontSize * 0.85).round()}px;
+        line-height: ${pageSize.lineHeight * 0.80};
+      }
+      .surah-header {
+        font-size: ${(pageSize.surahFontSize * 0.85).round()}px;
+        padding: 3px 0;
+        margin: 1px 0;
+      }
+      .basmallah {
+        font-size: ${(pageSize.fontSize * 0.85).round()}px;
+        padding: 3px 0;
+      }
+      .aya-number {
+        font-size: ${(pageSize.ayaNumberFontSize * 0.85).round()}px;
+      }
     }
   </style>
 </head>
@@ -508,29 +527,43 @@ class MushafHtmlGenerator {
     buffer.writeln('<div class="page-content">');
     buffer.writeln('<div class="page-number">$pageNumber</div>');
 
-    // First pass: render surah headers at top
-    for (final line in lines) {
-      if (line.lineType == 'surah_name') {
-        buffer.writeln(_generateSurahHeader(line.surahNumber ?? 1));
-      }
-    }
+    // Track if we're inside a lines-wrapper
+    bool inLinesWrapper = false;
 
-    // Second pass: render basmallah and ayahs in centered wrapper
-    buffer.writeln('<div class="lines-wrapper">');
     for (final line in lines) {
       switch (line.lineType) {
+        case 'surah_name':
+          // Close lines-wrapper if open, render header, then reopen
+          if (inLinesWrapper) {
+            buffer.writeln('</div>'); // close lines-wrapper
+            inLinesWrapper = false;
+          }
+          buffer.writeln(_generateSurahHeader(line.surahNumber ?? 1));
+          break;
         case 'basmallah':
+          // Open lines-wrapper if not already open
+          if (!inLinesWrapper) {
+            buffer.writeln('<div class="lines-wrapper">');
+            inLinesWrapper = true;
+          }
           buffer.writeln(_generateBasmallah());
           break;
         case 'ayah':
+          // Open lines-wrapper if not already open
+          if (!inLinesWrapper) {
+            buffer.writeln('<div class="lines-wrapper">');
+            inLinesWrapper = true;
+          }
           final lineHtml = await _generateAyahLine(line);
           buffer.writeln(lineHtml);
           break;
-        case 'surah_name':
-          break; // Already rendered above
       }
     }
-    buffer.writeln('</div>'); // close lines-wrapper
+
+    // Close lines-wrapper if still open
+    if (inLinesWrapper) {
+      buffer.writeln('</div>'); // close lines-wrapper
+    }
 
     buffer.writeln('</div>'); // close page-content
     buffer.writeln(_generateLegend());

@@ -44,7 +44,10 @@ class MushafWordMapper {
       words = _ayaWordsCache[cacheKey]!;
     } else {
       final ayaTokens = surahTokens[ayahIndex];
-      words = Tajweed.tokensToWords(ayaTokens);
+      // Filter out empty words caused by leading/trailing spaces in tokens
+      words = Tajweed.tokensToWords(ayaTokens)
+          .where((w) => w.tokens.any((t) => t.text.trim().isNotEmpty))
+          .toList();
       _ayaWordsCache[cacheKey] = words;
     }
 
