@@ -164,11 +164,11 @@ enum PageSize {
     paddingMm: 12,
     surahFontSize: 28,
     ayaNumberFontSize: 22,
-    legendFontSize: 8,
-    legendColorSize: 10,
-    legendGap: 8,
-    legendItemGap: 3,
-    legendPadding: 8,
+    legendFontSize: 6,
+    legendColorSize: 8,
+    legendGap: 5,
+    legendItemGap: 2,
+    legendPadding: 6,
   );
 
   const PageSize({
@@ -239,6 +239,9 @@ class MushafHtmlGenerator {
 
     // Write HTML header with styles
     buffer.writeln(_generateHtmlHeader());
+
+    // Add cover page
+    buffer.writeln(_generateCoverPage());
 
     // Generate content for each page
     for (int pageNum = startPage; pageNum <= endPage; pageNum++) {
@@ -405,7 +408,56 @@ class MushafHtmlGenerator {
       color: #333;
     }
     
+    /* Cover page styles */
+    .cover {
+      width: ${pageSize.widthMm}mm;
+      height: ${pageSize.heightMm}mm;
+      margin: 20px auto;
+      background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      color: #d4af37;
+      page-break-after: always;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+    .cover-ornament {
+      font-size: ${(pageSize.fontSize * 1.5).round()}px;
+      margin-bottom: 20px;
+      opacity: 0.8;
+    }
+    .cover-title {
+      font-size: ${(pageSize.surahFontSize * 1.8).round()}px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .cover-subtitle {
+      font-size: ${(pageSize.surahFontSize * 0.8).round()}px;
+      margin-bottom: 40px;
+      opacity: 0.9;
+    }
+    .cover-basmallah {
+      font-size: ${pageSize.surahFontSize}px;
+      margin: 40px 0;
+    }
+    .cover-footer {
+      font-size: ${(pageSize.fontSize * 0.5).round()}px;
+      font-family: sans-serif;
+      opacity: 0.7;
+      margin-top: 60px;
+      color: #c4a030;
+    }
+    
     @media print {
+      .cover {
+        margin: 0;
+        box-shadow: none;
+        page-break-after: always;
+        counter-reset: page 0;
+      }
       .page {
         margin: 0;
         box-shadow: none;
@@ -422,6 +474,19 @@ class MushafHtmlGenerator {
     return '''
 </body>
 </html>
+''';
+  }
+
+  String _generateCoverPage() {
+    return '''
+<div class="cover">
+  <div class="cover-ornament">❁ ❁ ❁</div>
+  <div class="cover-title">ٱلْقُرْآنُ ٱلْكَرِيمُ</div>
+  <div class="cover-subtitle">The Noble Quran</div>
+  <div class="cover-basmallah">بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ</div>
+  <div class="cover-ornament">❁ ❁ ❁</div>
+  <div class="cover-footer">With Tajweed Color Coding</div>
+</div>
 ''';
   }
 
@@ -471,11 +536,11 @@ class MushafHtmlGenerator {
   </div>
   <div class="legend-item">
     <div class="legend-color" style="background: #F06292;"></div>
-    <span class="legend-label">Idgham (Ghunna)</span>
+    <span class="legend-label">Idgham + Ghunna</span>
   </div>
   <div class="legend-item">
     <div class="legend-color" style="background: #9E9E9E;"></div>
-    <span class="legend-label">Idgham (No Ghunna)</span>
+    <span class="legend-label">Idgham</span>
   </div>
   <div class="legend-item">
     <div class="legend-color" style="background: #2196F3;"></div>
@@ -491,7 +556,7 @@ class MushafHtmlGenerator {
   </div>
   <div class="legend-item">
     <div class="legend-color" style="background: #8E64D6;"></div>
-    <span class="legend-label">Madd (Prolonging)</span>
+    <span class="legend-label">Madd</span>
   </div>
 </div>
 ''';
