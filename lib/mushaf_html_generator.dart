@@ -306,6 +306,15 @@ class MushafHtmlGenerator {
     
     .page-content {
       flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .lines-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
     
     .page-number {
@@ -329,6 +338,7 @@ class MushafHtmlGenerator {
     .line-justified {
       text-align: justify;
       text-align-last: justify;
+      word-spacing: -4px;
     }
     
     .surah-header {
@@ -498,11 +508,17 @@ class MushafHtmlGenerator {
     buffer.writeln('<div class="page-content">');
     buffer.writeln('<div class="page-number">$pageNumber</div>');
 
+    // First pass: render surah headers at top
+    for (final line in lines) {
+      if (line.lineType == 'surah_name') {
+        buffer.writeln(_generateSurahHeader(line.surahNumber ?? 1));
+      }
+    }
+
+    // Second pass: render basmallah and ayahs in centered wrapper
+    buffer.writeln('<div class="lines-wrapper">');
     for (final line in lines) {
       switch (line.lineType) {
-        case 'surah_name':
-          buffer.writeln(_generateSurahHeader(line.surahNumber ?? 1));
-          break;
         case 'basmallah':
           buffer.writeln(_generateBasmallah());
           break;
@@ -510,8 +526,11 @@ class MushafHtmlGenerator {
           final lineHtml = await _generateAyahLine(line);
           buffer.writeln(lineHtml);
           break;
+        case 'surah_name':
+          break; // Already rendered above
       }
     }
+    buffer.writeln('</div>'); // close lines-wrapper
 
     buffer.writeln('</div>'); // close page-content
     buffer.writeln(_generateLegend());
