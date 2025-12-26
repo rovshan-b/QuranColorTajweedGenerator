@@ -123,6 +123,88 @@ const List<String> surahNames = [
   'ٱلنَّاس', // 114
 ];
 
+/// Juz names in Arabic
+const List<String> juzNames = [
+  'ٱلْجُزْءُ ٱلْأَوَّلُ', // 1
+  'ٱلْجُزْءُ ٱلثَّانِي', // 2
+  'ٱلْجُزْءُ ٱلثَّالِثُ', // 3
+  'ٱلْجُزْءُ ٱلرَّابِعُ', // 4
+  'ٱلْجُزْءُ ٱلْخَامِسُ', // 5
+  'ٱلْجُزْءُ ٱلسَّادِسُ', // 6
+  'ٱلْجُزْءُ ٱلسَّابِعُ', // 7
+  'ٱلْجُزْءُ ٱلثَّامِنُ', // 8
+  'ٱلْجُزْءُ ٱلتَّاسِعُ', // 9
+  'ٱلْجُزْءُ ٱلْعَاشِرُ', // 10
+  'ٱلْجُزْءُ ٱلْحَادِي عَشَرَ', // 11
+  'ٱلْجُزْءُ ٱلثَّانِي عَشَرَ', // 12
+  'ٱلْجُزْءُ ٱلثَّالِثَ عَشَرَ', // 13
+  'ٱلْجُزْءُ ٱلرَّابِعَ عَشَرَ', // 14
+  'ٱلْجُزْءُ ٱلْخَامِسَ عَشَرَ', // 15
+  'ٱلْجُزْءُ ٱلسَّادِسَ عَشَرَ', // 16
+  'ٱلْجُزْءُ ٱلسَّابِعَ عَشَرَ', // 17
+  'ٱلْجُزْءُ ٱلثَّامِنَ عَشَرَ', // 18
+  'ٱلْجُزْءُ ٱلتَّاسِعَ عَشَرَ', // 19
+  'ٱلْجُزْءُ ٱلْعِشْرُونَ', // 20
+  'ٱلْجُزْءُ ٱلْحَادِي وَٱلْعِشْرُونَ', // 21
+  'ٱلْجُزْءُ ٱلثَّانِي وَٱلْعِشْرُونَ', // 22
+  'ٱلْجُزْءُ ٱلثَّالِثُ وَٱلْعِشْرُونَ', // 23
+  'ٱلْجُزْءُ ٱلرَّابِعُ وَٱلْعِشْرُونَ', // 24
+  'ٱلْجُزْءُ ٱلْخَامِسُ وَٱلْعِشْرُونَ', // 25
+  'ٱلْجُزْءُ ٱلسَّادِسُ وَٱلْعِشْرُونَ', // 26
+  'ٱلْجُزْءُ ٱلسَّابِعُ وَٱلْعِشْرُونَ', // 27
+  'ٱلْجُزْءُ ٱلثَّامِنُ وَٱلْعِشْرُونَ', // 28
+  'ٱلْجُزْءُ ٱلتَّاسِعُ وَٱلْعِشْرُونَ', // 29
+  'ٱلْجُزْءُ ٱلثَّلَاثُونَ', // 30
+];
+
+/// Juz start positions defined by surah and ayah
+/// Each entry is [surah, ayah] where the Juz begins
+const List<List<int>> juzStartPositions = [
+  [1, 1], // Juz 1
+  [2, 142], // Juz 2
+  [2, 253], // Juz 3
+  [3, 93], // Juz 4
+  [4, 24], // Juz 5
+  [4, 148], // Juz 6
+  [5, 82], // Juz 7
+  [6, 111], // Juz 8
+  [7, 88], // Juz 9
+  [8, 41], // Juz 10
+  [9, 93], // Juz 11
+  [11, 6], // Juz 12
+  [12, 53], // Juz 13
+  [15, 1], // Juz 14
+  [17, 1], // Juz 15
+  [18, 75], // Juz 16
+  [21, 1], // Juz 17
+  [23, 1], // Juz 18
+  [25, 21], // Juz 19
+  [27, 56], // Juz 20
+  [29, 46], // Juz 21
+  [33, 31], // Juz 22
+  [36, 28], // Juz 23
+  [39, 32], // Juz 24
+  [41, 47], // Juz 25
+  [46, 1], // Juz 26
+  [51, 31], // Juz 27
+  [58, 1], // Juz 28
+  [67, 1], // Juz 29
+  [78, 1], // Juz 30
+];
+
+/// Get Juz number (1-30) for a given surah and ayah
+int getJuzForPosition(int surah, int ayah) {
+  for (int i = juzStartPositions.length - 1; i >= 0; i--) {
+    final juzSurah = juzStartPositions[i][0];
+    final juzAyah = juzStartPositions[i][1];
+    // Check if current position is at or after this Juz start
+    if (surah > juzSurah || (surah == juzSurah && ayah >= juzAyah)) {
+      return i + 1;
+    }
+  }
+  return 1;
+}
+
 /// Page size configuration for HTML/PDF output
 enum PageSize {
   a3(
@@ -139,6 +221,7 @@ enum PageSize {
     legendGap: 16,
     legendItemGap: 6,
     legendPadding: 16,
+    headerFontSize: 24,
   ),
   a4(
     name: 'A4',
@@ -154,6 +237,7 @@ enum PageSize {
     legendGap: 12,
     legendItemGap: 4,
     legendPadding: 12,
+    headerFontSize: 20,
   ),
   a5(
     name: 'A5',
@@ -169,6 +253,7 @@ enum PageSize {
     legendGap: 5,
     legendItemGap: 2,
     legendPadding: 6,
+    headerFontSize: 14,
   );
 
   const PageSize({
@@ -185,6 +270,7 @@ enum PageSize {
     required this.legendGap,
     required this.legendItemGap,
     required this.legendPadding,
+    required this.headerFontSize,
   });
 
   final String name;
@@ -200,6 +286,7 @@ enum PageSize {
   final int legendGap;
   final int legendItemGap;
   final int legendPadding;
+  final int headerFontSize;
 }
 
 /// Generates HTML output for Mushaf pages with Tajweed coloring
@@ -362,11 +449,31 @@ class MushafHtmlGenerator {
       justify-content: center;
     }
     
-    .page-number {
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: ${pageSize.headerFontSize}px;
+      margin-bottom: ${(pageSize.paddingMm * 0.3).round()}mm;
+      padding-bottom: ${(pageSize.paddingMm * 0.2).round()}mm;
+      border-bottom: 1px solid #ccc;
+      color: #555;
+    }
+    
+    .page-header-surah {
+      flex: 1;
+      text-align: right;
+    }
+    
+    .page-header-number {
+      flex: 1;
       text-align: center;
-      font-size: ${(pageSize.fontSize * 0.5).round()}px;
-      margin-bottom: ${(pageSize.paddingMm * 0.5).round()}mm;
-      color: #666;
+      font-weight: bold;
+    }
+    
+    .page-header-juz {
+      flex: 1;
+      text-align: left;
     }
     
     .line {
@@ -518,6 +625,9 @@ class MushafHtmlGenerator {
         box-shadow: none;
         page-break-after: always;
       }
+      .page-header {
+        font-size: ${(pageSize.headerFontSize * 0.9).round()}px;
+      }
       .line {
         font-size: ${(pageSize.fontSize * 0.99).round()}px;
         line-height: ${pageSize.lineHeight * 0.80};
@@ -565,9 +675,45 @@ class MushafHtmlGenerator {
     final buffer = StringBuffer();
     final lines = await _dbReader.getPageLines(pageNumber);
 
+    // Find the first surah/ayah on this page for header info
+    int? firstSurah;
+    int? firstAyah;
+    for (final line in lines) {
+      if (line.lineType == 'surah_name' && line.surahNumber != null) {
+        firstSurah = line.surahNumber;
+        firstAyah = 1; // Surah header means we're at ayah 1
+        break;
+      } else if (line.lineType == 'ayah' && line.firstWordId != null) {
+        // Get the first word to determine surah/ayah
+        final firstWord = await _dbReader.getWord(line.firstWordId!);
+        if (firstWord != null) {
+          firstSurah = firstWord.surah;
+          firstAyah = firstWord.ayah;
+          break;
+        }
+      }
+    }
+
+    // Default to surah 1, ayah 1 if we couldn't determine
+    firstSurah ??= 1;
+    firstAyah ??= 1;
+
+    // Get surah name and juz for header
+    final surahName = firstSurah > 0 && firstSurah <= surahNames.length
+        ? 'سُورَةُ ${surahNames[firstSurah - 1]}'
+        : '';
+    final juzNumber = getJuzForPosition(firstSurah, firstAyah);
+    final juzName = juzNumber > 0 && juzNumber <= juzNames.length
+        ? juzNames[juzNumber - 1]
+        : '';
+
     buffer.writeln('<div class="page">');
     buffer.writeln('<div class="page-content">');
-    buffer.writeln('<div class="page-number">$pageNumber</div>');
+    buffer.writeln('<div class="page-header">');
+    buffer.writeln('<span class="page-header-surah">$surahName</span>');
+    buffer.writeln('<span class="page-header-number">$pageNumber</span>');
+    buffer.writeln('<span class="page-header-juz">$juzName</span>');
+    buffer.writeln('</div>');
 
     // Track if we're inside a lines-wrapper
     bool inLinesWrapper = false;
