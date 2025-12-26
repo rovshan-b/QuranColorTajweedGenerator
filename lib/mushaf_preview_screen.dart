@@ -189,8 +189,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text('Processing page $_currentPage of $_totalPages'),
-                      ],
-                      if (_statusMessage.isNotEmpty) ...[
+                      ] else if (_statusMessage.isNotEmpty &&
+                          !_isGenerating) ...[
                         const SizedBox(height: 8),
                         Text(_statusMessage),
                       ],
@@ -203,8 +203,11 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
             if (_outputPath != null) ...[
               const SizedBox(height: 16),
               Card(
-                color: Colors.green.shade50,
-                child: Padding(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green, width: 2),
+                  ),
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,7 +221,10 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
-                                ?.copyWith(color: Colors.green.shade700),
+                                ?.copyWith(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                         ],
                       ),

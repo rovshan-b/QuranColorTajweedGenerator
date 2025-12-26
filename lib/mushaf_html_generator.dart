@@ -519,20 +519,20 @@ class MushafHtmlGenerator {
         page-break-after: always;
       }
       .line {
-        font-size: ${(pageSize.fontSize * 0.90).round()}px;
-        line-height: ${pageSize.lineHeight * 0.85};
+        font-size: ${(pageSize.fontSize * 0.99).round()}px;
+        line-height: ${pageSize.lineHeight * 0.80};
       }
       .surah-header {
-        font-size: ${(pageSize.surahFontSize * 0.90).round()}px;
+        font-size: ${(pageSize.surahFontSize * 0.85).round()}px;
         padding: 3px 0;
         margin: 1px 0;
       }
       .basmallah {
-        font-size: ${(pageSize.fontSize * 0.90).round()}px;
+        font-size: ${(pageSize.fontSize * 0.99).round()}px;
         padding: 3px 0;
       }
       .aya-number {
-        font-size: ${(pageSize.ayaNumberFontSize * 0.90).round()}px;
+        font-size: ${(pageSize.ayaNumberFontSize * 0.99).round()}px;
       }
     }
   </style>
