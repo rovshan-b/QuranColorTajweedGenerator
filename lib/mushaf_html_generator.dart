@@ -212,7 +212,7 @@ enum PageSize {
     widthMm: 297,
     heightMm: 420,
     fontSize: 42,
-    lineHeight: 2.4,
+    lineHeight: 2.2,
     paddingMm: 22,
     surahFontSize: 46,
     ayaNumberFontSize: 34,
@@ -228,7 +228,7 @@ enum PageSize {
     widthMm: 210,
     heightMm: 297,
     fontSize: 32,
-    lineHeight: 2.2,
+    lineHeight: 2.0,
     paddingMm: 15,
     surahFontSize: 36,
     ayaNumberFontSize: 28,
@@ -244,7 +244,7 @@ enum PageSize {
     widthMm: 148,
     heightMm: 210,
     fontSize: 22,
-    lineHeight: 2.0,
+    lineHeight: 1.85,
     paddingMm: 12,
     surahFontSize: 26,
     ayaNumberFontSize: 20,
@@ -447,6 +447,32 @@ class MushafHtmlGenerator {
       display: flex;
       flex-direction: column;
       justify-content: center;
+      border: 3px double #D4AF37;
+      border-radius: 8px;
+      padding: 10px 15px;
+      margin: 5px 0;
+      position: relative;
+      background: linear-gradient(to bottom, rgba(212, 175, 55, 0.03), transparent, rgba(212, 175, 55, 0.03));
+    }
+    
+    .lines-wrapper::before,
+    .lines-wrapper::after {
+      content: '❁';
+      position: absolute;
+      color: #D4AF37;
+      font-size: ${(pageSize.fontSize * 0.6).round()}px;
+    }
+    
+    .lines-wrapper::before {
+      top: -${(pageSize.fontSize * 0.3).round()}px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    
+    .lines-wrapper::after {
+      bottom: -${(pageSize.fontSize * 0.3).round()}px;
+      left: 50%;
+      transform: translateX(-50%);
     }
     
     .page-header {
