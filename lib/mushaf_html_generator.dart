@@ -297,6 +297,12 @@ class MushafHtmlGenerator {
       background: #FFF;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
       page-break-after: always;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .page-content {
+      flex: 1;
     }
     
     .page-number {
@@ -380,11 +386,13 @@ class MushafHtmlGenerator {
       margin-top: auto;
       padding-top: ${pageSize.legendPadding}px;
       border-top: 1px solid #ddd;
+      direction: ltr;
     }
     .legend-item {
       display: flex;
       align-items: center;
       gap: ${pageSize.legendItemGap}px;
+      direction: ltr;
     }
     .legend-color {
       width: ${pageSize.legendColorSize}px;
@@ -422,6 +430,7 @@ class MushafHtmlGenerator {
     final lines = await _dbReader.getPageLines(pageNumber);
 
     buffer.writeln('<div class="page">');
+    buffer.writeln('<div class="page-content">');
     buffer.writeln('<div class="page-number">$pageNumber</div>');
 
     for (final line in lines) {
@@ -439,8 +448,9 @@ class MushafHtmlGenerator {
       }
     }
 
+    buffer.writeln('</div>'); // close page-content
     buffer.writeln(_generateLegend());
-    buffer.writeln('</div>');
+    buffer.writeln('</div>'); // close page
     return buffer.toString();
   }
 
@@ -449,7 +459,7 @@ class MushafHtmlGenerator {
 <div class="legend">
   <div class="legend-item">
     <div class="legend-color" style="background: #4CAF50;"></div>
-    <span class="legend-label">Lafzatullah</span>
+    <span class="legend-label">LAFZATULLAH</span>
   </div>
   <div class="legend-item">
     <div class="legend-color" style="background: #06B0B6;"></div>
