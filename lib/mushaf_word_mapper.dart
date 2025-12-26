@@ -8,6 +8,9 @@ class MushafWordMapper {
   /// Cache for aya words to avoid repeated tokenization
   final Map<String, List<TajweedWord>> _ayaWordsCache = {};
 
+  /// Track mapping failures for debugging
+  final List<String> mappingWarnings = [];
+
   /// Maps a MushafWord to its corresponding TajweedWord with colored tokens.
   ///
   /// Returns null if:
@@ -27,12 +30,20 @@ class MushafWordMapper {
 
     // Check bounds for surah
     if (surahIndex < 0 || surahIndex >= CachedTajweedTokens.suraTokens.length) {
+      final warning =
+          'WARNING: Surah ${mushafWord.surah} out of bounds (max: ${CachedTajweedTokens.suraTokens.length}) for word "${mushafWord.text}"';
+      mappingWarnings.add(warning);
+      print(warning);
       return null;
     }
 
     // Check bounds for ayah
     final surahTokens = CachedTajweedTokens.suraTokens[surahIndex];
     if (ayahIndex < 0 || ayahIndex >= surahTokens.length) {
+      final warning =
+          'WARNING: Ayah ${mushafWord.ayah} out of bounds (max: ${surahTokens.length}) in Surah ${mushafWord.surah} for word "${mushafWord.text}"';
+      mappingWarnings.add(warning);
+      print(warning);
       return null;
     }
 
@@ -53,6 +64,10 @@ class MushafWordMapper {
 
     // Check bounds for word
     if (wordIndex < 0 || wordIndex >= words.length) {
+      final warning =
+          'WARNING: Word ${mushafWord.word} out of bounds (tajweed has ${words.length} words) in Surah ${mushafWord.surah} Ayah ${mushafWord.ayah} for word "${mushafWord.text}"';
+      mappingWarnings.add(warning);
+      print(warning);
       return null;
     }
 
@@ -62,5 +77,6 @@ class MushafWordMapper {
   /// Clears the internal cache.
   void clearCache() {
     _ayaWordsCache.clear();
+    mappingWarnings.clear();
   }
 }

@@ -129,11 +129,11 @@ enum PageSize {
     name: 'A3',
     widthMm: 297,
     heightMm: 420,
-    fontSize: 50,
+    fontSize: 46,
     lineHeight: 2.4,
     paddingMm: 22,
-    surahFontSize: 54,
-    ayaNumberFontSize: 42,
+    surahFontSize: 50,
+    ayaNumberFontSize: 38,
     legendFontSize: 12,
     legendColorSize: 14,
     legendGap: 16,
@@ -144,11 +144,11 @@ enum PageSize {
     name: 'A4',
     widthMm: 210,
     heightMm: 297,
-    fontSize: 36,
+    fontSize: 32,
     lineHeight: 2.2,
     paddingMm: 15,
-    surahFontSize: 40,
-    ayaNumberFontSize: 32,
+    surahFontSize: 36,
+    ayaNumberFontSize: 28,
     legendFontSize: 10,
     legendColorSize: 12,
     legendGap: 12,
@@ -159,11 +159,11 @@ enum PageSize {
     name: 'A5',
     widthMm: 148,
     heightMm: 210,
-    fontSize: 24,
+    fontSize: 22,
     lineHeight: 2.0,
     paddingMm: 12,
-    surahFontSize: 28,
-    ayaNumberFontSize: 22,
+    surahFontSize: 26,
+    ayaNumberFontSize: 20,
     legendFontSize: 6,
     legendColorSize: 8,
     legendGap: 5,
@@ -212,6 +212,10 @@ class MushafHtmlGenerator {
   String? _kitabRegularBase64;
   String? _kitabBoldBase64;
 
+  // Track words rendered without Tajweed coloring (plain text fallback)
+  int _plainTextFallbackCount = 0;
+  final List<String> _plainTextFallbackWords = [];
+
   MushafHtmlGenerator(this._dbReader, {this.pageSize = PageSize.a4})
       : _wordMapper = MushafWordMapper();
 
@@ -232,6 +236,11 @@ class MushafHtmlGenerator {
     required int endPage,
     void Function(int currentPage, int totalPages)? onProgress,
   }) async {
+    // Reset counters
+    _plainTextFallbackCount = 0;
+    _plainTextFallbackWords.clear();
+    _wordMapper.mappingWarnings.clear();
+
     // Load fonts first
     await _loadFonts();
 
@@ -253,7 +262,40 @@ class MushafHtmlGenerator {
     // Write HTML footer
     buffer.writeln(_generateHtmlFooter());
 
+    // Print summary of any issues
+    _printGenerationSummary();
+
     return buffer.toString();
+  }
+
+  /// Prints a summary of any issues encountered during generation
+  void _printGenerationSummary() {
+    print('\n========== GENERATION SUMMARY ==========');
+    if (_plainTextFallbackCount == 0 && _wordMapper.mappingWarnings.isEmpty) {
+      print('✓ All words rendered with Tajweed coloring successfully!');
+    } else {
+      if (_plainTextFallbackCount > 0) {
+        print(
+            '⚠ WARNING: $_plainTextFallbackCount words rendered as plain text (no Tajweed coloring):');
+        for (final word in _plainTextFallbackWords.take(20)) {
+          print('  - $word');
+        }
+        if (_plainTextFallbackWords.length > 20) {
+          print('  ... and ${_plainTextFallbackWords.length - 20} more');
+        }
+      }
+      if (_wordMapper.mappingWarnings.isNotEmpty) {
+        print(
+            '\n⚠ WARNING: ${_wordMapper.mappingWarnings.length} mapping warnings:');
+        for (final warning in _wordMapper.mappingWarnings.take(20)) {
+          print('  - $warning');
+        }
+        if (_wordMapper.mappingWarnings.length > 20) {
+          print('  ... and ${_wordMapper.mappingWarnings.length - 20} more');
+        }
+      }
+    }
+    print('=========================================\n');
   }
 
   String _generateHtmlHeader() {
@@ -477,20 +519,20 @@ class MushafHtmlGenerator {
         page-break-after: always;
       }
       .line {
-        font-size: ${(pageSize.fontSize * 0.85).round()}px;
-        line-height: ${pageSize.lineHeight * 0.80};
+        font-size: ${(pageSize.fontSize * 0.90).round()}px;
+        line-height: ${pageSize.lineHeight * 0.85};
       }
       .surah-header {
-        font-size: ${(pageSize.surahFontSize * 0.85).round()}px;
+        font-size: ${(pageSize.surahFontSize * 0.90).round()}px;
         padding: 3px 0;
         margin: 1px 0;
       }
       .basmallah {
-        font-size: ${(pageSize.fontSize * 0.85).round()}px;
+        font-size: ${(pageSize.fontSize * 0.90).round()}px;
         padding: 3px 0;
       }
       .aya-number {
-        font-size: ${(pageSize.ayaNumberFontSize * 0.85).round()}px;
+        font-size: ${(pageSize.ayaNumberFontSize * 0.90).round()}px;
       }
     }
   </style>
@@ -636,10 +678,16 @@ class MushafHtmlGenerator {
 
   Future<String> _generateAyahLine(MushafLine line) async {
     if (line.firstWordId == null || line.lastWordId == null) {
+      print(
+          'WARNING: Ayah line on page ${line.pageNumber} line ${line.lineNumber} has no word IDs!');
       return '<div class="line line-centered"></div>';
     }
 
     final words = await _dbReader.getWords(line.firstWordId!, line.lastWordId!);
+    if (words.isEmpty) {
+      print(
+          'WARNING: No words found for page ${line.pageNumber} line ${line.lineNumber} (word IDs ${line.firstWordId}-${line.lastWordId})');
+    }
     final buffer = StringBuffer();
 
     final alignmentClass = line.isCentered ? 'line-centered' : 'line-justified';
@@ -655,7 +703,12 @@ class MushafHtmlGenerator {
         if (tajweedWord != null) {
           buffer.write(_generateColoredWord(tajweedWord));
         } else {
-          // Fallback: render plain text
+          // Fallback: render plain text - LOG THIS as it indicates a mapping problem
+          _plainTextFallbackCount++;
+          _plainTextFallbackWords
+              .add('${word.surah}:${word.ayah}:${word.word} "${word.text}"');
+          print(
+              'PLAIN TEXT FALLBACK: ${word.surah}:${word.ayah}:${word.word} "${word.text}"');
           buffer.write('<span class="word">${word.text}</span> ');
         }
       }
