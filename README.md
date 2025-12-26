@@ -1,90 +1,97 @@
-# Quran Tajweed rules highlighter
+# Tajweed Quran Mushaf Generator
 
-بسم الله الرحمن الرحيم
-_In the name of Allah, Most Gracious, Most Merciful_
+A Flutter desktop application that generates HTML files of the Quran Mushaf with Tajweed color coding. The generated HTML can be printed to PDF using browser's print functionality.
 
-This is an example project that shows how to implement Quran Tajweed rules in flutter.  
-You can extract highlighting logic from it and use in your projects.
-Following rules are implemented:
+## Features
 
-- Ghunna
-- Ikhfaa - Noon sakin and tanweens
-- Ikhfaa - Meem sakin
-- Idgham with ghunna - Noon sakin and tanweens
-- Idgham with ghunna - Meem sakin
-- Idgham without ghunna - Noon sakin and tanweens
-- Idgham without ghunna - Shamsiyya
-- Idgham without ghunna - Misleyn
-- Idgham without ghunna - Mutajaniseyn
-- Idgham without ghunna - Mutagaribeyn
-- Iqlab - Noon sakin and tanweens
-- Izhar - Noon sakin and tanweens
-- Qalqala
-- Prolonging - by 2, 4, 6
-- Prolonging - Lin
-- Prolonging - Ivad
-- Prolonging - Muttasil
-- Prolonging - Munfasil
-- Prolonging - Lazim
-- Alef tafreeq
-- Hamzatul wasl
+- **Tajweed Color Coding**: Each Tajweed rule is highlighted with a specific color:
 
-## Getting Started
+  - 🟢 **LAFZATULLAH** (Allah's name) - Green
+  - 🔵 **Izhar** - Cyan
+  - 🔴 **Ikhfaa** - Red
+  - 🩷 **Idgham with Ghunna** - Pink
+  - ⚪ **Idgham without Ghunna** - Gray
+  - 🔵 **Iqlab** - Blue
+  - 🟢 **Qalqala** - Olive
+  - 🟠 **Ghunna** - Orange
+  - 🟣 **Madd (Prolonging)** - Purple
 
-Main class that does tokenization is called `Tajweed`.  
-You call it like this: `Tajweed.tokenize(String AyaText, int sura, int aya)` and it returns `List<TajweedToken>` that
-you can later pass to `RichText` widget for displaying:
+- **Page Size Options**: Generate for A3, A4, or A5 paper sizes
+- **Custom Page Range**: Generate specific pages (1-604)
+- **Embedded Fonts**: Uses Kitab Arabic font embedded as base64 for consistent rendering
+- **Cover Page**: Includes a decorative cover page
+- **Color Legend**: Each page includes a Tajweed color legend at the bottom
+- **Print-Optimized CSS**: Includes print media queries for proper PDF generation
 
-```dart
-Text.rich(
-    TextSpan(
-        children: <TextSpan>[
-        for (final token in tokens)
-            TextSpan(
-            text: token.text,
-            style: TextStyle(
-                fontFamily: 'Kitab',
-                fontWeight: FontWeight.w400,
-                fontSize: 30,
-                color: token.rule.color(context) ??
-                    Theme.of(context).colorScheme.onSurface,
-            ),
-            ),
-        TextSpan(
-            text: '\u06DD${(index + 1).toArabicDigits()}',
-            style: TextStyle(
-            fontFamily: 'Kitab',
-            fontWeight: FontWeight.w400,
-            fontSize: 30,
-            color: Theme.of(context).colorScheme.onSurface,
-            ),
-        )
-        ],
-    ),
-)
+## How It Works
+
+1. The app reads Quran text from SQLite databases:
+
+   - `qpc-v4-tajweed-15-lines.db` - Page layout (15 lines per page)
+   - `uthmani.db` - Word-by-word Quran text
+
+2. Tajweed rules are applied using pre-computed tokens from `cached_tajweed_tokens.dart`
+
+3. HTML is generated with each letter/word colored according to its Tajweed rule
+
+4. The HTML file can be opened in a browser and printed to PDF
+
+## Usage
+
+1. Run the app on desktop computer:
+
+   ```bash
+   flutter run
+   ```
+
+2. Select page range (e.g., 1-604 for complete Quran)
+
+3. Choose page size (A3, A4, or A5)
+
+4. Click "Generate HTML"
+
+5. Open the generated HTML file in a browser
+
+6. Print to PDF using browser's print function
+   - Enable "Background graphics" in print settings to preserve colors
+
+## Project Structure
+
+```
+lib/
+├── main.dart                    # App entry point
+├── mushaf_preview_screen.dart   # UI for generation
+├── mushaf_html_generator.dart   # HTML generation with CSS
+├── mushaf_db_reader.dart        # SQLite database reading
+├── mushaf_db_initializer.dart   # Database initialization
+├── mushaf_word_mapper.dart      # Maps words to Tajweed tokens
+├── tajweed_color_mapper.dart    # Tajweed rule to color mapping
+├── cached_tajweed_tokens.dart   # Pre-computed Tajweed tokens
+├── tajweed.dart                 # Tajweed tokenization logic
+├── tajweed_rule.dart            # Tajweed rule definitions
+├── tajweed_subrule.dart         # Tajweed subrule definitions
+├── tajweed_token.dart           # Token data structure
+└── tajweed_word.dart            # Word data structure
+
+resources/
+├── qpc-v4-tajweed-15-lines.db   # Page layout database
+└── uthmani.db                   # Quran text database
+
+assets/fonts/
+├── Kitab-Regular.ttf            # Arabic font
+└── Kitab-Bold.ttf               # Arabic font (bold)
 ```
 
-`TajweedToken` contains properties to indicate what rule and subrule were matched, so that you can for example display documentation of rule.
+## Requirements
 
-If you need to get tokens grouped by words (for example for highlighting in UI etc) you can call
-`Tajweed.tokenizeAsWords(String AyaText, int sura, int aya)` method and it will return `List<TajweedWord>` where every
-`TajweedWord` is one word that contains `TajweedToken`s inside it.
+- Flutter SDK
+- macOS (for desktop app), Should also work on Windows and Linux
+- SQLite databases in `resources/` folder
 
-For performance use some cache variable in application and do not re-tokenize on every `build` method call.
+## Data Integrity
 
-## Using pre-cached tokens
+The app includes safety checks to ensure accurate Quran text rendering:
 
-Project also contains a file called `cached_tajweed_tokens.dart` that contains a class called `CachedTajweedTokens` with a static field `suraTokens`. That field is a **zero-indexed** list of pre-cached tokens for all Suras and all Ayas. That file is quite large in size, but if you decide to use it, below is how.
-
-```dart
-//To retrieve tokens for last (7th) Aya of Sura Al Fatiha
-final ayaTokens = CachedTajweedTokens.suraTokens[0][6]; //0 - Al Fatiha, 6 - Aya number 7
-
-//To retrieve tokens word-by-word in List<TajweedWord>
-final ayaTokens = CachedTajweedTokens.suraTokens[0][6];
-final wordByWordTokens = Tajweed.tokensToWords(ayaTokens); //this operation is fast
-```
-
-![screenshot](/screenshot.png?raw=true "Screenshot")
-
-![screenshot](/screenshot_dark.png?raw=true "Screenshot (Dark theme)")
+- Logs any words that couldn't be mapped to Tajweed tokens
+- Prints a generation summary showing success or listing any issues
+- Falls back to plain text (black) if Tajweed mapping fails
