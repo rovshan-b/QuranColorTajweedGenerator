@@ -4,6 +4,33 @@ import 'package:flutter/services.dart';
 import 'package:tajweed/mushaf_db_reader.dart';
 import 'package:tajweed/mushaf_word_mapper.dart';
 import 'package:tajweed/tajweed_color_mapper.dart';
+import 'package:tajweed/tajweed_rule.dart';
+
+/// Book margins configuration for printing
+/// For RTL books (Arabic): gutter is on RIGHT for odd pages, LEFT for even pages
+class BookMargins {
+  /// Inner margin (near spine/binding) in mm
+  final double gutterMm;
+
+  /// Outer margin (away from spine) in mm
+  final double outerMm;
+
+  /// Top margin in mm
+  final double topMm;
+
+  /// Bottom margin in mm
+  final double bottomMm;
+
+  const BookMargins({
+    this.gutterMm = 20.0,
+    this.outerMm = 12.0,
+    this.topMm = 15.0,
+    this.bottomMm = 15.0,
+  });
+
+  /// Default margins for book printing
+  static const BookMargins defaultMargins = BookMargins();
+}
 
 /// Surah names in Arabic for headers
 const List<String> surahNames = [
@@ -211,8 +238,8 @@ enum PageSize {
     name: 'A3',
     widthMm: 297,
     heightMm: 420,
-    fontSize: 42,
-    lineHeight: 2.2,
+    fontSize: 50,
+    lineHeight: 2.0,
     paddingMm: 22,
     surahFontSize: 46,
     ayaNumberFontSize: 34,
@@ -222,6 +249,12 @@ enum PageSize {
     legendItemGap: 6,
     legendPadding: 16,
     headerFontSize: 24,
+    margins: BookMargins(
+      gutterMm: 26.0,
+      outerMm: 26.0,
+      topMm: 18.0,
+      bottomMm: 18.0,
+    ),
   ),
   a4(
     name: 'A4',
@@ -238,13 +271,19 @@ enum PageSize {
     legendItemGap: 4,
     legendPadding: 12,
     headerFontSize: 20,
+    margins: BookMargins(
+      gutterMm: 26.0,
+      outerMm: 26.0,
+      topMm: 15.0,
+      bottomMm: 15.0,
+    ),
   ),
   a5(
     name: 'A5',
     widthMm: 148,
     heightMm: 210,
-    fontSize: 22,
-    lineHeight: 1.85,
+    fontSize: 18,
+    lineHeight: 1.95,
     paddingMm: 12,
     surahFontSize: 26,
     ayaNumberFontSize: 20,
@@ -254,6 +293,12 @@ enum PageSize {
     legendItemGap: 2,
     legendPadding: 6,
     headerFontSize: 14,
+    margins: BookMargins(
+      gutterMm: 26.0,
+      outerMm: 26.0,
+      topMm: 12.0,
+      bottomMm: 12.0,
+    ),
   );
 
   const PageSize({
@@ -271,6 +316,7 @@ enum PageSize {
     required this.legendItemGap,
     required this.legendPadding,
     required this.headerFontSize,
+    required this.margins,
   });
 
   final String name;
@@ -287,6 +333,7 @@ enum PageSize {
   final int legendItemGap;
   final int legendPadding;
   final int headerFontSize;
+  final BookMargins margins;
 }
 
 /// Generates HTML output for Mushaf pages with Tajweed coloring
@@ -294,17 +341,18 @@ class MushafHtmlGenerator {
   final MushafDbReader _dbReader;
   final MushafWordMapper _wordMapper;
   final PageSize pageSize;
+  final BookMargins margins;
 
   // Cached base64 encoded fonts
   String? _kitabRegularBase64;
   String? _kitabBoldBase64;
 
-  // Track words rendered without Tajweed coloring (plain text fallback)
-  int _plainTextFallbackCount = 0;
-  final List<String> _plainTextFallbackWords = [];
-
-  MushafHtmlGenerator(this._dbReader, {this.pageSize = PageSize.a4})
-      : _wordMapper = MushafWordMapper();
+  MushafHtmlGenerator(
+    this._dbReader, {
+    this.pageSize = PageSize.a4,
+    BookMargins? margins,
+  })  : margins = margins ?? pageSize.margins,
+        _wordMapper = MushafWordMapper();
 
   /// Load and cache fonts as base64
   Future<void> _loadFonts() async {
@@ -317,17 +365,42 @@ class MushafHtmlGenerator {
     _kitabBoldBase64 = base64Encode(boldData.buffer.asUint8List());
   }
 
+  /// Convert a `TajweedRule` to a kebab-case CSS key used for class names.
+  String _tajweedRuleKey(TajweedRule r) {
+    switch (r) {
+      case TajweedRule.LAFZATULLAH:
+        return 'lafzatullah';
+      case TajweedRule.izhar:
+        return 'izhar';
+      case TajweedRule.ikhfaa:
+        return 'ikhfaa';
+      case TajweedRule.idghamWithGhunna:
+        return 'idgham-ghunna';
+      case TajweedRule.iqlab:
+        return 'iqlab';
+      case TajweedRule.qalqala:
+        return 'qalqala';
+      case TajweedRule.idghamWithoutGhunna:
+        return 'idgham-no-ghunna';
+      case TajweedRule.ghunna:
+        return 'ghunna';
+      case TajweedRule.prolonging:
+        return 'prolonging';
+      case TajweedRule.alefTafreeq:
+        return 'alef-tafreeq';
+      case TajweedRule.hamzatulWasli:
+        return 'hamzatul-wasli';
+      case TajweedRule.none:
+        return 'default';
+    }
+  }
+
   /// Generates HTML for the specified page range
   Future<String> generateHtml({
     required int startPage,
     required int endPage,
     void Function(int currentPage, int totalPages)? onProgress,
   }) async {
-    // Reset counters
-    _plainTextFallbackCount = 0;
-    _plainTextFallbackWords.clear();
-    _wordMapper.mappingWarnings.clear();
-
     // Load fonts first
     await _loadFonts();
 
@@ -349,43 +422,17 @@ class MushafHtmlGenerator {
     // Write HTML footer
     buffer.writeln(_generateHtmlFooter());
 
-    // Print summary of any issues
-    _printGenerationSummary();
-
     return buffer.toString();
   }
 
-  /// Prints a summary of any issues encountered during generation
-  void _printGenerationSummary() {
-    print('\n========== GENERATION SUMMARY ==========');
-    if (_plainTextFallbackCount == 0 && _wordMapper.mappingWarnings.isEmpty) {
-      print('✓ All words rendered with Tajweed coloring successfully!');
-    } else {
-      if (_plainTextFallbackCount > 0) {
-        print(
-            '⚠ WARNING: $_plainTextFallbackCount words rendered as plain text (no Tajweed coloring):');
-        for (final word in _plainTextFallbackWords.take(20)) {
-          print('  - $word');
-        }
-        if (_plainTextFallbackWords.length > 20) {
-          print('  ... and ${_plainTextFallbackWords.length - 20} more');
-        }
-      }
-      if (_wordMapper.mappingWarnings.isNotEmpty) {
-        print(
-            '\n⚠ WARNING: ${_wordMapper.mappingWarnings.length} mapping warnings:');
-        for (final warning in _wordMapper.mappingWarnings.take(20)) {
-          print('  - $warning');
-        }
-        if (_wordMapper.mappingWarnings.length > 20) {
-          print('  ... and ${_wordMapper.mappingWarnings.length - 20} more');
-        }
-      }
-    }
-    print('=========================================\n');
-  }
-
   String _generateHtmlHeader() {
+    // Build tajweed CSS classes from rule-color mapper
+    final tajweedCss = TajweedRule.values.map((r) {
+      final key = _tajweedRuleKey(r);
+      final hex = tajweedRuleToHex(r);
+      return '.tajweed-$key { color: $hex; }';
+    }).join('\n    ');
+
     return '''
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -428,12 +475,30 @@ class MushafHtmlGenerator {
       width: ${pageSize.widthMm}mm;
       min-height: ${pageSize.heightMm}mm;
       margin: 20px auto;
-      padding: ${pageSize.paddingMm}mm ${(pageSize.paddingMm * 0.75).round()}mm;
+      padding-top: ${margins.topMm}mm;
+      padding-bottom: ${margins.bottomMm}mm;
       background: #FFF;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
       page-break-after: always;
       display: flex;
       flex-direction: column;
+    }
+    
+    /* RTL book: inner (gutter) margin is towards the spine.
+       After the cover the physical page numbering is used.
+       For RTL books the gutter should be on LEFT for odd physical pages (right-side pages)
+       and on RIGHT for even physical pages (left-side pages).
+    */
+    .page-odd {
+      /* odd physical page: gutter on LEFT */
+      padding-right: ${margins.outerMm}mm;
+      padding-left: ${margins.gutterMm}mm;
+    }
+
+    .page-even {
+      /* even physical page: gutter on RIGHT */
+      padding-right: ${margins.gutterMm}mm;
+      padding-left: ${margins.outerMm}mm;
     }
     
     .page-content {
@@ -447,32 +512,10 @@ class MushafHtmlGenerator {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      border: 3px double #D4AF37;
-      border-radius: 8px;
-      padding: 10px 15px;
-      margin: 5px 0;
+      padding: 8px 12px;
+      margin: 0;
       position: relative;
-      background: linear-gradient(to bottom, rgba(212, 175, 55, 0.03), transparent, rgba(212, 175, 55, 0.03));
-    }
-    
-    .lines-wrapper::before,
-    .lines-wrapper::after {
-      content: '❁';
-      position: absolute;
-      color: #D4AF37;
-      font-size: ${(pageSize.fontSize * 0.6).round()}px;
-    }
-    
-    .lines-wrapper::before {
-      top: -${(pageSize.fontSize * 0.3).round()}px;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-    
-    .lines-wrapper::after {
-      bottom: -${(pageSize.fontSize * 0.3).round()}px;
-      left: 50%;
-      transform: translateX(-50%);
+      background: transparent;
     }
     
     .page-header {
@@ -507,6 +550,7 @@ class MushafHtmlGenerator {
       line-height: ${pageSize.lineHeight};
       margin: 0;
       padding: 2px 0;
+      white-space: nowrap;
     }
     
     .line-centered {
@@ -557,16 +601,7 @@ class MushafHtmlGenerator {
     }
     
     /* Tajweed color classes */
-    .tajweed-lafzatullah { color: #4CAF50; }
-    .tajweed-izhar { color: #06B0B6; }
-    .tajweed-ikhfaa { color: #B71C1C; }
-    .tajweed-idgham-ghunna { color: #F06292; }
-    .tajweed-iqlab { color: #2196F3; }
-    .tajweed-qalqala { color: #7B8F0A; }
-    .tajweed-idgham-no-ghunna { color: #9E9E9E; }
-    .tajweed-ghunna { color: #FF9800; }
-    .tajweed-prolonging { color: #8E64D6; }
-    .tajweed-default { color: #000; }
+    $tajweedCss
     
     /* Legend styles */
     .legend {
@@ -733,7 +768,13 @@ class MushafHtmlGenerator {
         ? juzNames[juzNumber - 1]
         : '';
 
-    buffer.writeln('<div class="page">');
+    // Determine odd/even class for RTL book margins
+    // Account for cover page: physical page = pageNumber + 1 (cover is page 1)
+    // So Quran page 1 is physical page 2 (even), page 2 is physical page 3 (odd), etc.
+    final physicalPageNumber = pageNumber + 1;
+    final pageClass = physicalPageNumber.isOdd ? 'page-odd' : 'page-even';
+
+    buffer.writeln('<div class="page $pageClass">');
     buffer.writeln('<div class="page-content">');
     buffer.writeln('<div class="page-header">');
     buffer.writeln('<span class="page-header-surah">$surahName</span>');
@@ -850,15 +891,15 @@ class MushafHtmlGenerator {
 
   Future<String> _generateAyahLine(MushafLine line) async {
     if (line.firstWordId == null || line.lastWordId == null) {
-      print(
-          'WARNING: Ayah line on page ${line.pageNumber} line ${line.lineNumber} has no word IDs!');
-      return '<div class="line line-centered"></div>';
+      throw Exception(
+          'Ayah line on page ${line.pageNumber} line ${line.lineNumber} has no word IDs!');
+      //return '<div class="line line-centered"></div>';
     }
 
     final words = await _dbReader.getWords(line.firstWordId!, line.lastWordId!);
     if (words.isEmpty) {
-      print(
-          'WARNING: No words found for page ${line.pageNumber} line ${line.lineNumber} (word IDs ${line.firstWordId}-${line.lastWordId})');
+      throw Exception(
+          'No words found for page ${line.pageNumber} line ${line.lineNumber} (word IDs ${line.firstWordId}-${line.lastWordId})');
     }
     final buffer = StringBuffer();
 
@@ -876,12 +917,12 @@ class MushafHtmlGenerator {
           buffer.write(_generateColoredWord(tajweedWord));
         } else {
           // Fallback: render plain text - LOG THIS as it indicates a mapping problem
-          _plainTextFallbackCount++;
-          _plainTextFallbackWords
-              .add('${word.surah}:${word.ayah}:${word.word} "${word.text}"');
-          print(
+          //_plainTextFallbackCount++;
+          //_plainTextFallbackWords
+          //    .add('${word.surah}:${word.ayah}:${word.word} "${word.text}"');
+          throw Exception(
               'PLAIN TEXT FALLBACK: ${word.surah}:${word.ayah}:${word.word} "${word.text}"');
-          buffer.write('<span class="word">${word.text}</span> ');
+          //buffer.write('<span class="word">${word.text}</span> ');
         }
       }
     }
@@ -902,11 +943,13 @@ class MushafHtmlGenerator {
     final tokens = tajweedWord.tokens;
     for (int i = 0; i < tokens.length; i++) {
       final token = tokens[i];
-      final colorHex = tajweedRuleToHex(token.rule);
+      // Use class-based tajweed coloring
+      final ruleKey = _tajweedRuleKey(token.rule);
+      final className = 'tajweed-$ruleKey';
       // Escape any HTML special characters in the text
       final escapedText = _escapeHtml(token.text);
 
-      buffer.write('<span style="color: $colorHex">$escapedText</span>');
+      buffer.write('<span class="$className">$escapedText</span>');
     }
 
     buffer.write('</span> ');

@@ -27,6 +27,15 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   // Page size selection
   PageSize _selectedPageSize = PageSize.a4;
 
+  // Book margin controllers with default values
+  // Margins are now fixed per PageSize presets; UI controls removed
+
+  @override
+  void dispose() {
+    // No margin controllers to dispose (margins are per-PageSize)
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -148,6 +157,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+
             const SizedBox(height: 24),
 
             // Generate button
@@ -317,9 +328,11 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         _statusMessage = 'Generating HTML...';
       });
 
-      // Generate HTML
-      final generator =
-          MushafHtmlGenerator(dbReader, pageSize: _selectedPageSize);
+      // Generate HTML using margins preset for selected PageSize
+      final generator = MushafHtmlGenerator(
+        dbReader,
+        pageSize: _selectedPageSize,
+      );
       final html = await generator.generateHtml(
         startPage: _startPage,
         endPage: _endPage,

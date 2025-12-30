@@ -3,14 +3,12 @@ import 'package:tajweed/mushaf_db_reader.dart';
 import 'package:tajweed/tajweed.dart';
 import 'package:tajweed/tajweed_token.dart';
 import 'package:tajweed/tajweed_word.dart';
+import 'package:tajweed/tajweed_rule.dart';
 
 /// Maps words from the database to their corresponding Tajweed-colored tokens.
 class MushafWordMapper {
   /// Cache for aya words to avoid repeated tokenization
   final Map<String, List<TajweedWord>> _ayaWordsCache = {};
-
-  /// Track mapping failures for debugging
-  final List<String> mappingWarnings = [];
 
   /// Hizb/Rub markers that appear in tajweed tokens but not in database
   static final _hizbMarkerPattern = RegExp(r'^[۞۩]+$');
@@ -36,9 +34,7 @@ class MushafWordMapper {
     if (surahIndex < 0 || surahIndex >= CachedTajweedTokens.suraTokens.length) {
       final warning =
           'WARNING: Surah ${mushafWord.surah} out of bounds (max: ${CachedTajweedTokens.suraTokens.length}) for word "${mushafWord.text}"';
-      mappingWarnings.add(warning);
-      print(warning);
-      return null;
+      throw Exception(warning);
     }
 
     // Check bounds for ayah
@@ -46,9 +42,7 @@ class MushafWordMapper {
     if (ayahIndex < 0 || ayahIndex >= surahTokens.length) {
       final warning =
           'WARNING: Ayah ${mushafWord.ayah} out of bounds (max: ${surahTokens.length}) in Surah ${mushafWord.surah} for word "${mushafWord.text}"';
-      mappingWarnings.add(warning);
-      print(warning);
-      return null;
+      throw Exception(warning);
     }
 
     // Get cached words or compute them
@@ -67,9 +61,7 @@ class MushafWordMapper {
     if (wordIndex < 0 || wordIndex >= words.length) {
       final warning =
           'WARNING: Word ${mushafWord.word} out of bounds (tajweed has ${words.length} words) in Surah ${mushafWord.surah} Ayah ${mushafWord.ayah} for word "${mushafWord.text}"';
-      mappingWarnings.add(warning);
-      print(warning);
-      return null;
+      throw Exception(warning);
     }
 
     return words[wordIndex];
@@ -80,7 +72,8 @@ class MushafWordMapper {
   /// - This preserves the hizb for rendering but doesn't affect word count
   List<TajweedWord> _processAyaWords(List<TajweedWord> rawWords) {
     final result = <TajweedWord>[];
-    TajweedWord? pendingHizb;
+    // Collect tokens for one or more consecutive hizb-only words
+    final pendingHizbTokens = <TajweedToken>[];
 
     for (final word in rawWords) {
       final wordText = word.tokens.map((t) => t.text).join('').trim();
@@ -90,21 +83,23 @@ class MushafWordMapper {
 
       // Check if this is a hizb-only word
       if (_hizbMarkerPattern.hasMatch(wordText)) {
-        // Store it to prepend to next word
-        pendingHizb = word;
+        // Accumulate its tokens to prepend/append later
+        for (final t in word.tokens) {
+          pendingHizbTokens.add(t);
+        }
         continue;
       }
 
       // If we have a pending hizb, prepend its tokens to this word
-      if (pendingHizb != null) {
+      if (pendingHizbTokens.isNotEmpty) {
         final combinedWord = TajweedWord();
-        // Add hizb tokens
-        for (final token in pendingHizb.tokens) {
+        // Add accumulated hizb tokens
+        for (final token in pendingHizbTokens) {
           combinedWord.tokens.add(token);
         }
-        // Add a space token between hizb and word
+        // Add a non-colored space token between hizb and word
         combinedWord.tokens.add(TajweedToken(
-          word.tokens.first.rule,
+          TajweedRule.none,
           null,
           null,
           ' ',
@@ -117,9 +112,37 @@ class MushafWordMapper {
           combinedWord.tokens.add(token);
         }
         result.add(combinedWord);
-        pendingHizb = null;
+        pendingHizbTokens.clear();
       } else {
         result.add(word);
+      }
+    }
+
+    // If there's a trailing hizb marker with no following word,
+    // append its tokens to the last result word so the symbol is preserved
+    if (pendingHizbTokens.isNotEmpty) {
+      if (result.isNotEmpty) {
+        final lastWord = result.last;
+        // insert a non-colored separator (space) before hizb marker
+        lastWord.tokens.add(TajweedToken(
+          TajweedRule.none,
+          null,
+          null,
+          ' ',
+          0,
+          1,
+          null,
+        ));
+        for (final token in pendingHizbTokens) {
+          lastWord.tokens.add(token);
+        }
+      } else {
+        // No existing words to attach to; create a TajweedWord from tokens
+        final hizbWord = TajweedWord();
+        for (final token in pendingHizbTokens) {
+          hizbWord.tokens.add(token);
+        }
+        result.add(hizbWord);
       }
     }
 
@@ -129,6 +152,5 @@ class MushafWordMapper {
   /// Clears the internal cache.
   void clearCache() {
     _ayaWordsCache.clear();
-    mappingWarnings.clear();
   }
 }
