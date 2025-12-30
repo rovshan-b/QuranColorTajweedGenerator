@@ -238,7 +238,7 @@ enum PageSize {
     name: 'A3',
     widthMm: 297,
     heightMm: 420,
-    fontSize: 50,
+    fontSize: 48,
     lineHeight: 2.0,
     paddingMm: 22,
     surahFontSize: 46,
