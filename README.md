@@ -90,8 +90,5 @@ assets/fonts/
 
 ## Data Integrity
 
-The app includes safety checks to ensure accurate Quran text rendering:
-
-- Logs any words that couldn't be mapped to Tajweed tokens
-- Prints a generation summary showing success or listing any issues
-- Falls back to plain text (black) if Tajweed mapping fails
+The app includes safety checks to ensure accurate Quran text rendering.
+It will throw exception and stop generation in case of any problems during word mapping etc.
