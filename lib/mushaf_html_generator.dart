@@ -87,18 +87,20 @@ class MushafHtmlGenerator {
     // Add one empty page after cover (Physical Page 2)
     buffer.writeln(_generateEmptyPage(physicalPageNumber: 2));
 
-    // Generate Table of Contents after empty page (Starting at Physical Page 3)
-    final tocResult = await _generateTableOfContents(startPhysicalPage: 3);
-    buffer.writeln(tocResult['html']);
-    final int tocPages = tocResult['pages'] as int;
-
     // Generate content for each page
+    // prefacePages is 1 (for the empty page after cover)
     for (int pageNum = startPage; pageNum <= endPage; pageNum++) {
       onProgress?.call(pageNum - startPage + 1, endPage - startPage + 1);
-      final pageHtml =
-          await _generatePageHtml(pageNum, prefacePages: 1 + tocPages);
+      final pageHtml = await _generatePageHtml(pageNum, prefacePages: 1);
       buffer.writeln(pageHtml);
     }
+
+    // Generate Table of Contents at the end
+    final int contentPagesCount = endPage - startPage + 1;
+    final int tocStartPhysicalPage = contentPagesCount + 3;
+    final tocResult =
+        await _generateTableOfContents(startPhysicalPage: tocStartPhysicalPage);
+    buffer.writeln(tocResult['html']);
 
     // Write HTML footer
     buffer.writeln(_generateHtmlFooter());
@@ -254,7 +256,9 @@ class MushafHtmlGenerator {
     .line-justified {
       text-align: justify;
       text-align-last: justify;
-      word-spacing: -5px;
+      text-justify: inter-word;
+      word-spacing: -0.25em;
+      letter-spacing: -0.05em;
     }
     
     .surah-header {
