@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:tajweed/mushaf_db_initializer.dart';
 import 'package:tajweed/mushaf_db_reader.dart';
 import 'package:tajweed/mushaf_html_generator.dart';
+import 'package:tajweed/mushaf_page_config.dart';
 
 /// Screen for generating Mushaf HTML with Tajweed coloring
 class MushafPreviewScreen extends StatefulWidget {

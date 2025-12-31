@@ -5,336 +5,8 @@ import 'package:tajweed/mushaf_db_reader.dart';
 import 'package:tajweed/mushaf_word_mapper.dart';
 import 'package:tajweed/tajweed_color_mapper.dart';
 import 'package:tajweed/tajweed_rule.dart';
-
-/// Book margins configuration for printing
-/// For RTL books (Arabic): gutter is on RIGHT for odd pages, LEFT for even pages
-class BookMargins {
-  /// Inner margin (near spine/binding) in mm
-  final double gutterMm;
-
-  /// Outer margin (away from spine) in mm
-  final double outerMm;
-
-  /// Top margin in mm
-  final double topMm;
-
-  /// Bottom margin in mm
-  final double bottomMm;
-
-  const BookMargins({
-    this.gutterMm = 20.0,
-    this.outerMm = 12.0,
-    this.topMm = 15.0,
-    this.bottomMm = 15.0,
-  });
-
-  /// Default margins for book printing
-  static const BookMargins defaultMargins = BookMargins();
-}
-
-/// Surah names in Arabic for headers
-const List<String> surahNames = [
-  'ٱلْفَاتِحَة', // 1
-  'ٱلْبَقَرَة', // 2
-  'آلِ عِمْرَان', // 3
-  'ٱلنِّسَاء', // 4
-  'ٱلْمَائِدَة', // 5
-  'ٱلْأَنْعَام', // 6
-  'ٱلْأَعْرَاف', // 7
-  'ٱلْأَنفَال', // 8
-  'ٱلتَّوْبَة', // 9
-  'يُونُس', // 10
-  'هُود', // 11
-  'يُوسُف', // 12
-  'ٱلرَّعْد', // 13
-  'إِبْرَاهِيم', // 14
-  'ٱلْحِجْر', // 15
-  'ٱلنَّحْل', // 16
-  'ٱلْإِسْرَاء', // 17
-  'ٱلْكَهْف', // 18
-  'مَرْيَم', // 19
-  'طه', // 20
-  'ٱلْأَنبِيَاء', // 21
-  'ٱلْحَجّ', // 22
-  'ٱلْمُؤْمِنُون', // 23
-  'ٱلنُّور', // 24
-  'ٱلْفُرْقَان', // 25
-  'ٱلشُّعَرَاء', // 26
-  'ٱلنَّمْل', // 27
-  'ٱلْقَصَص', // 28
-  'ٱلْعَنكَبُوت', // 29
-  'ٱلرُّوم', // 30
-  'لُقْمَان', // 31
-  'ٱلسَّجْدَة', // 32
-  'ٱلْأَحْزَاب', // 33
-  'سَبَأ', // 34
-  'فَاطِر', // 35
-  'يس', // 36
-  'ٱلصَّافَّات', // 37
-  'ص', // 38
-  'ٱلزُّمَر', // 39
-  'غَافِر', // 40
-  'فُصِّلَتْ', // 41
-  'ٱلشُّورَىٰ', // 42
-  'ٱلزُّخْرُف', // 43
-  'ٱلدُّخَان', // 44
-  'ٱلْجَاثِيَة', // 45
-  'ٱلْأَحْقَاف', // 46
-  'مُحَمَّد', // 47
-  'ٱلْفَتْح', // 48
-  'ٱلْحُجُرَات', // 49
-  'ق', // 50
-  'ٱلذَّارِيَات', // 51
-  'ٱلطُّور', // 52
-  'ٱلنَّجْم', // 53
-  'ٱلْقَمَر', // 54
-  'ٱلرَّحْمَٰن', // 55
-  'ٱلْوَاقِعَة', // 56
-  'ٱلْحَدِيد', // 57
-  'ٱلْمُجَادِلَة', // 58
-  'ٱلْحَشْر', // 59
-  'ٱلْمُمْتَحَنَة', // 60
-  'ٱلصَّفّ', // 61
-  'ٱلْجُمُعَة', // 62
-  'ٱلْمُنَافِقُون', // 63
-  'ٱلتَّغَابُن', // 64
-  'ٱلطَّلَاق', // 65
-  'ٱلتَّحْرِيم', // 66
-  'ٱلْمُلْك', // 67
-  'ٱلْقَلَم', // 68
-  'ٱلْحَاقَّة', // 69
-  'ٱلْمَعَارِج', // 70
-  'نُوح', // 71
-  'ٱلْجِنّ', // 72
-  'ٱلْمُزَّمِّل', // 73
-  'ٱلْمُدَّثِّر', // 74
-  'ٱلْقِيَامَة', // 75
-  'ٱلْإِنسَان', // 76
-  'ٱلْمُرْسَلَات', // 77
-  'ٱلنَّبَأ', // 78
-  'ٱلنَّازِعَات', // 79
-  'عَبَسَ', // 80
-  'ٱلتَّكْوِير', // 81
-  'ٱلْإِنفِطَار', // 82
-  'ٱلْمُطَفِّفِين', // 83
-  'ٱلْإِنشِقَاق', // 84
-  'ٱلْبُرُوج', // 85
-  'ٱلطَّارِق', // 86
-  'ٱلْأَعْلَىٰ', // 87
-  'ٱلْغَاشِيَة', // 88
-  'ٱلْفَجْر', // 89
-  'ٱلْبَلَد', // 90
-  'ٱلشَّمْس', // 91
-  'ٱللَّيْل', // 92
-  'ٱلضُّحَىٰ', // 93
-  'ٱلشَّرْح', // 94
-  'ٱلتِّين', // 95
-  'ٱلْعَلَق', // 96
-  'ٱلْقَدْر', // 97
-  'ٱلْبَيِّنَة', // 98
-  'ٱلزَّلْزَلَة', // 99
-  'ٱلْعَادِيَات', // 100
-  'ٱلْقَارِعَة', // 101
-  'ٱلتَّكَاثُر', // 102
-  'ٱلْعَصْر', // 103
-  'ٱلْهُمَزَة', // 104
-  'ٱلْفِيل', // 105
-  'قُرَيْش', // 106
-  'ٱلْمَاعُون', // 107
-  'ٱلْكَوْثَر', // 108
-  'ٱلْكَافِرُون', // 109
-  'ٱلنَّصْر', // 110
-  'ٱلْمَسَد', // 111
-  'ٱلْإِخْلَاص', // 112
-  'ٱلْفَلَق', // 113
-  'ٱلنَّاس', // 114
-];
-
-/// Juz names in Arabic
-const List<String> juzNames = [
-  'ٱلْجُزْءُ ٱلْأَوَّلُ', // 1
-  'ٱلْجُزْءُ ٱلثَّانِي', // 2
-  'ٱلْجُزْءُ ٱلثَّالِثُ', // 3
-  'ٱلْجُزْءُ ٱلرَّابِعُ', // 4
-  'ٱلْجُزْءُ ٱلْخَامِسُ', // 5
-  'ٱلْجُزْءُ ٱلسَّادِسُ', // 6
-  'ٱلْجُزْءُ ٱلسَّابِعُ', // 7
-  'ٱلْجُزْءُ ٱلثَّامِنُ', // 8
-  'ٱلْجُزْءُ ٱلتَّاسِعُ', // 9
-  'ٱلْجُزْءُ ٱلْعَاشِرُ', // 10
-  'ٱلْجُزْءُ ٱلْحَادِي عَشَرَ', // 11
-  'ٱلْجُزْءُ ٱلثَّانِي عَشَرَ', // 12
-  'ٱلْجُزْءُ ٱلثَّالِثَ عَشَرَ', // 13
-  'ٱلْجُزْءُ ٱلرَّابِعَ عَشَرَ', // 14
-  'ٱلْجُزْءُ ٱلْخَامِسَ عَشَرَ', // 15
-  'ٱلْجُزْءُ ٱلسَّادِسَ عَشَرَ', // 16
-  'ٱلْجُزْءُ ٱلسَّابِعَ عَشَرَ', // 17
-  'ٱلْجُزْءُ ٱلثَّامِنَ عَشَرَ', // 18
-  'ٱلْجُزْءُ ٱلتَّاسِعَ عَشَرَ', // 19
-  'ٱلْجُزْءُ ٱلْعِشْرُونَ', // 20
-  'ٱلْجُزْءُ ٱلْحَادِي وَٱلْعِشْرُونَ', // 21
-  'ٱلْجُزْءُ ٱلثَّانِي وَٱلْعِشْرُونَ', // 22
-  'ٱلْجُزْءُ ٱلثَّالِثُ وَٱلْعِشْرُونَ', // 23
-  'ٱلْجُزْءُ ٱلرَّابِعُ وَٱلْعِشْرُونَ', // 24
-  'ٱلْجُزْءُ ٱلْخَامِسُ وَٱلْعِشْرُونَ', // 25
-  'ٱلْجُزْءُ ٱلسَّادِسُ وَٱلْعِشْرُونَ', // 26
-  'ٱلْجُزْءُ ٱلسَّابِعُ وَٱلْعِشْرُونَ', // 27
-  'ٱلْجُزْءُ ٱلثَّامِنُ وَٱلْعِشْرُونَ', // 28
-  'ٱلْجُزْءُ ٱلتَّاسِعُ وَٱلْعِشْرُونَ', // 29
-  'ٱلْجُزْءُ ٱلثَّلَاثُونَ', // 30
-];
-
-/// Juz start positions defined by surah and ayah
-/// Each entry is [surah, ayah] where the Juz begins
-const List<List<int>> juzStartPositions = [
-  [1, 1], // Juz 1
-  [2, 142], // Juz 2
-  [2, 253], // Juz 3
-  [3, 93], // Juz 4
-  [4, 24], // Juz 5
-  [4, 148], // Juz 6
-  [5, 82], // Juz 7
-  [6, 111], // Juz 8
-  [7, 88], // Juz 9
-  [8, 41], // Juz 10
-  [9, 93], // Juz 11
-  [11, 6], // Juz 12
-  [12, 53], // Juz 13
-  [15, 1], // Juz 14
-  [17, 1], // Juz 15
-  [18, 75], // Juz 16
-  [21, 1], // Juz 17
-  [23, 1], // Juz 18
-  [25, 21], // Juz 19
-  [27, 56], // Juz 20
-  [29, 46], // Juz 21
-  [33, 31], // Juz 22
-  [36, 28], // Juz 23
-  [39, 32], // Juz 24
-  [41, 47], // Juz 25
-  [46, 1], // Juz 26
-  [51, 31], // Juz 27
-  [58, 1], // Juz 28
-  [67, 1], // Juz 29
-  [78, 1], // Juz 30
-];
-
-/// Get Juz number (1-30) for a given surah and ayah
-int getJuzForPosition(int surah, int ayah) {
-  for (int i = juzStartPositions.length - 1; i >= 0; i--) {
-    final juzSurah = juzStartPositions[i][0];
-    final juzAyah = juzStartPositions[i][1];
-    // Check if current position is at or after this Juz start
-    if (surah > juzSurah || (surah == juzSurah && ayah >= juzAyah)) {
-      return i + 1;
-    }
-  }
-  return 1;
-}
-
-/// Page size configuration for HTML/PDF output
-enum PageSize {
-  a3(
-    name: 'A3',
-    widthMm: 297,
-    heightMm: 420,
-    fontSize: 48,
-    lineHeight: 2.0,
-    paddingMm: 22,
-    surahFontSize: 46,
-    ayaNumberFontSize: 34,
-    legendFontSize: 12,
-    legendColorSize: 14,
-    legendGap: 16,
-    legendItemGap: 6,
-    legendPadding: 16,
-    headerFontSize: 24,
-    margins: BookMargins(
-      gutterMm: 26.0,
-      outerMm: 26.0,
-      topMm: 18.0,
-      bottomMm: 18.0,
-    ),
-  ),
-  a4(
-    name: 'A4',
-    widthMm: 210,
-    heightMm: 297,
-    fontSize: 32,
-    lineHeight: 2.0,
-    paddingMm: 15,
-    surahFontSize: 36,
-    ayaNumberFontSize: 28,
-    legendFontSize: 10,
-    legendColorSize: 12,
-    legendGap: 12,
-    legendItemGap: 4,
-    legendPadding: 12,
-    headerFontSize: 20,
-    margins: BookMargins(
-      gutterMm: 26.0,
-      outerMm: 26.0,
-      topMm: 15.0,
-      bottomMm: 15.0,
-    ),
-  ),
-  a5(
-    name: 'A5',
-    widthMm: 148,
-    heightMm: 210,
-    fontSize: 18,
-    lineHeight: 1.95,
-    paddingMm: 12,
-    surahFontSize: 26,
-    ayaNumberFontSize: 20,
-    legendFontSize: 6,
-    legendColorSize: 8,
-    legendGap: 5,
-    legendItemGap: 2,
-    legendPadding: 6,
-    headerFontSize: 14,
-    margins: BookMargins(
-      gutterMm: 26.0,
-      outerMm: 26.0,
-      topMm: 12.0,
-      bottomMm: 12.0,
-    ),
-  );
-
-  const PageSize({
-    required this.name,
-    required this.widthMm,
-    required this.heightMm,
-    required this.fontSize,
-    required this.lineHeight,
-    required this.paddingMm,
-    required this.surahFontSize,
-    required this.ayaNumberFontSize,
-    required this.legendFontSize,
-    required this.legendColorSize,
-    required this.legendGap,
-    required this.legendItemGap,
-    required this.legendPadding,
-    required this.headerFontSize,
-    required this.margins,
-  });
-
-  final String name;
-  final int widthMm;
-  final int heightMm;
-  final int fontSize;
-  final double lineHeight;
-  final int paddingMm;
-  final int surahFontSize;
-  final int ayaNumberFontSize;
-  final int legendFontSize;
-  final int legendColorSize;
-  final int legendGap;
-  final int legendItemGap;
-  final int legendPadding;
-  final int headerFontSize;
-  final BookMargins margins;
-}
+import 'package:tajweed/quran_metadata.dart';
+import 'package:tajweed/mushaf_page_config.dart';
 
 /// Generates HTML output for Mushaf pages with Tajweed coloring
 class MushafHtmlGenerator {
@@ -412,10 +84,19 @@ class MushafHtmlGenerator {
     // Add cover page
     buffer.writeln(_generateCoverPage());
 
+    // Add one empty page after cover (Physical Page 2)
+    buffer.writeln(_generateEmptyPage(physicalPageNumber: 2));
+
+    // Generate Table of Contents after empty page (Starting at Physical Page 3)
+    final tocResult = await _generateTableOfContents(startPhysicalPage: 3);
+    buffer.writeln(tocResult['html']);
+    final int tocPages = tocResult['pages'] as int;
+
     // Generate content for each page
     for (int pageNum = startPage; pageNum <= endPage; pageNum++) {
       onProgress?.call(pageNum - startPage + 1, endPage - startPage + 1);
-      final pageHtml = await _generatePageHtml(pageNum);
+      final pageHtml =
+          await _generatePageHtml(pageNum, prefacePages: 1 + tocPages);
       buffer.writeln(pageHtml);
     }
 
@@ -513,6 +194,19 @@ class MushafHtmlGenerator {
       flex-direction: column;
       justify-content: center;
       padding: 8px 12px;
+      margin: 0;
+      position: relative;
+      background: transparent;
+    }
+
+    /* Table of Contents wrapper: top-aligned, separate from ayah lines-wrapper */
+    .toc-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: stretch;
+      padding: 12px 18px;
       margin: 0;
       position: relative;
       background: transparent;
@@ -732,7 +426,21 @@ class MushafHtmlGenerator {
 ''';
   }
 
-  Future<String> _generatePageHtml(int pageNumber) async {
+  String _generateEmptyPage({required int physicalPageNumber}) {
+    final pageClass = physicalPageNumber.isOdd ? 'page-odd' : 'page-even';
+    return '''
+<div class="page $pageClass">
+  <div class="page-content" style="display: flex; justify-content: center; align-items: center; height: 100%;">
+    <div style="text-align: center; color: #bbb; font-family: sans-serif; font-size: 14px;">
+      <p dir="rtl" style="margin-bottom: 8px;">هذه الصفحة تركت فارغة عمداً</p>
+      <p dir="ltr">This page is intentionally left blank</p>
+    </div>
+  </div>
+</div>''';
+  }
+
+  Future<String> _generatePageHtml(int pageNumber,
+      {int prefacePages = 0}) async {
     final buffer = StringBuffer();
     final lines = await _dbReader.getPageLines(pageNumber);
 
@@ -769,12 +477,11 @@ class MushafHtmlGenerator {
         : '';
 
     // Determine odd/even class for RTL book margins
-    // Account for cover page: physical page = pageNumber + 1 (cover is page 1)
-    // So Quran page 1 is physical page 2 (even), page 2 is physical page 3 (odd), etc.
-    final physicalPageNumber = pageNumber + 1;
+    // Account for cover and any preface pages (TOC): physical page = pageNumber + 1 + prefacePages
+    final physicalPageNumber = pageNumber + 1 + prefacePages;
     final pageClass = physicalPageNumber.isOdd ? 'page-odd' : 'page-even';
 
-    buffer.writeln('<div class="page $pageClass">');
+    buffer.writeln('<div id="page-${pageNumber}" class="page $pageClass">');
     buffer.writeln('<div class="page-content">');
     buffer.writeln('<div class="page-header">');
     buffer.writeln('<span class="page-header-surah">$surahName</span>');
@@ -827,46 +534,127 @@ class MushafHtmlGenerator {
   }
 
   String _generateLegend() {
-    return '''
-<div class="legend">
-  <div class="legend-item">
-    <div class="legend-color" style="background: #4CAF50;"></div>
-    <span class="legend-label">LAFZATULLAH</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: #06B0B6;"></div>
-    <span class="legend-label">Izhar</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: #B71C1C;"></div>
-    <span class="legend-label">Ikhfaa</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: #F06292;"></div>
-    <span class="legend-label">Idgham + Ghunna</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: #9E9E9E;"></div>
-    <span class="legend-label">Idgham</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: #2196F3;"></div>
-    <span class="legend-label">Iqlab</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: #7B8F0A;"></div>
-    <span class="legend-label">Qalqala</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: #FF9800;"></div>
-    <span class="legend-label">Ghunna</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background: #8E64D6;"></div>
-    <span class="legend-label">Madd</span>
-  </div>
-</div>
-''';
+    // Define legend entries with their corresponding TajweedRule and display label
+    final legendEntries = [
+      {'rule': TajweedRule.LAFZATULLAH, 'label': 'LAFZATULLAH'},
+      {'rule': TajweedRule.izhar, 'label': 'Izhar'},
+      {'rule': TajweedRule.ikhfaa, 'label': 'Ikhfaa'},
+      {'rule': TajweedRule.idghamWithGhunna, 'label': 'Idgham + Ghunna'},
+      {'rule': TajweedRule.idghamWithoutGhunna, 'label': 'Idgham'},
+      {'rule': TajweedRule.iqlab, 'label': 'Iqlab'},
+      {'rule': TajweedRule.qalqala, 'label': 'Qalqala'},
+      {'rule': TajweedRule.ghunna, 'label': 'Ghunna'},
+      {'rule': TajweedRule.prolonging, 'label': 'Madd'},
+    ];
+
+    final buffer = StringBuffer();
+    buffer.writeln('<div class="legend">');
+
+    for (final entry in legendEntries) {
+      final rule = entry['rule'] as TajweedRule;
+      final label = entry['label'] as String;
+      final color = tajweedRuleToHex(rule);
+
+      buffer.writeln('  <div class="legend-item">');
+      buffer.writeln(
+          '    <div class="legend-color" style="background: $color;"></div>');
+      buffer.writeln('    <span class="legend-label">$label</span>');
+      buffer.writeln('  </div>');
+    }
+
+    buffer.writeln('</div>');
+    return buffer.toString();
+  }
+
+  /// Scans the pages DB for `surah_name` lines and builds a paginated
+  /// Table of Contents placed after the cover page.
+  /// Returns a map with keys: 'html' (String) and 'pages' (int pages used).
+  Future<Map<String, dynamic>> _generateTableOfContents(
+      {int startPhysicalPage = 2}) async {
+    // Map surahNumber -> first page where its header appears
+    final Map<int, int> surahPageMap = {};
+
+    final totalPages = await _dbReader.getPageCount();
+    for (int p = 1; p <= totalPages; p++) {
+      final lines = await _dbReader.getPageLines(p);
+      for (final line in lines) {
+        if (line.lineType == 'surah_name' && line.surahNumber != null) {
+          final s = line.surahNumber!;
+          if (!surahPageMap.containsKey(s)) {
+            surahPageMap[s] = p;
+          }
+        }
+      }
+    }
+
+    // Build ordered list for 1..114
+    final entries = <Map<String, dynamic>>[];
+    for (int s = 1; s <= surahNames.length; s++) {
+      entries.add({
+        'surah': s,
+        'name': surahNames[s - 1],
+        'page': surahPageMap[s] ?? '-',
+      });
+    }
+
+    int entriesPerPage = pageSize.tocEntriesPerPage;
+
+    final pages = <String>[];
+    for (int i = 0; i < entries.length; i += entriesPerPage) {
+      final chunk =
+          entries.sublist(i, (i + entriesPerPage).clamp(0, entries.length));
+
+      final buffer = StringBuffer();
+      // Determine parity based on physical page number
+      final int currentPageIndex = i ~/ entriesPerPage;
+      final int physicalPageNumber = startPhysicalPage + currentPageIndex;
+      final pageClass = physicalPageNumber.isOdd ? 'page-odd' : 'page-even';
+
+      buffer.writeln('<div class="page $pageClass">');
+      buffer.writeln('<div class="page-content">');
+      buffer.writeln('<div class="page-header">');
+      buffer.writeln('<span class="page-header-surah"></span>');
+      buffer.writeln('<span class="page-header-number">فهرس السور</span>');
+      buffer.writeln('<span class="page-header-juz"></span>');
+      buffer.writeln('</div>');
+
+      buffer.writeln('<div class="toc-wrapper">');
+      buffer.writeln(
+          '<div style="padding:12px; font-family: sans-serif; width: 100%;">');
+      buffer.writeln(
+          '<h3 style="text-align:center; margin-bottom: 20px;">فهرس السور — Table of Contents</h3>');
+      buffer.writeln('<div style="margin-top:14px; width: 100%;">');
+
+      for (final e in chunk) {
+        final surahNum = e['surah'];
+        final name = e['name'];
+        final page = e['page'];
+        if (page is int) {
+          buffer.writeln(
+              '<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:${pageSize.tocFontSize}px; border-bottom: 1px dotted #eee;">'
+              '<a href="#page-${page}" style="text-decoration:none; color:inherit; flex: 1; text-align:right;">${surahNum}. سورة ${name}</a>'
+              '<a href="#page-${page}" style="text-decoration:none; color:inherit; width: 60px; text-align:left;">${page}</a>'
+              '</div>');
+        } else {
+          buffer.writeln(
+              '<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:${pageSize.tocFontSize}px; border-bottom: 1px dotted #eee;">'
+              '<span style="direction:rtl; flex: 1; text-align:right;">${surahNum}. سورة ${name}</span>'
+              '<span style="direction:ltr; width: 60px; text-align:left;">${page}</span>'
+              '</div>');
+        }
+      }
+
+      buffer.writeln('</div>');
+      buffer.writeln('</div>');
+      buffer.writeln('</div>'); // close lines-wrapper
+      buffer.writeln('</div>'); // close page-content
+      buffer.writeln('</div>'); // close page
+
+      pages.add(buffer.toString());
+    }
+
+    final html = pages.join('\n');
+    return {'html': html, 'pages': pages.length};
   }
 
   String _generateSurahHeader(int surahNumber) {
