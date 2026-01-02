@@ -74,6 +74,7 @@ flutter:
     - assets/words/words.csv
     - resources/qpc-v4-tajweed-15-lines.db
     - resources/uthmani.db
+    - assets/translations/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

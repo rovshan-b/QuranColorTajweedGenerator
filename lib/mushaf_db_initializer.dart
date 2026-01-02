@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
@@ -7,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 class MushafDbInitializer {
   static const String _pagesDbAsset = 'resources/qpc-v4-tajweed-15-lines.db';
   static const String _wordsDbAsset = 'resources/uthmani.db';
+  static const String _translationsAssetDir = 'assets/translations/';
 
   static String? _pagesDbPath;
   static String? _wordsDbPath;
@@ -18,7 +20,8 @@ class MushafDbInitializer {
   static String get pagesDbPath {
     if (_pagesDbPath == null) {
       throw StateError(
-          'Database not initialized. Call MushafDbInitializer.initialize() first.');
+        'Database not initialized. Call MushafDbInitializer.initialize() first.',
+      );
     }
     return _pagesDbPath!;
   }
@@ -27,7 +30,8 @@ class MushafDbInitializer {
   static String get wordsDbPath {
     if (_wordsDbPath == null) {
       throw StateError(
-          'Database not initialized. Call MushafDbInitializer.initialize() first.');
+        'Database not initialized. Call MushafDbInitializer.initialize() first.',
+      );
     }
     return _wordsDbPath!;
   }
@@ -56,12 +60,44 @@ class MushafDbInitializer {
       _wordsDbAsset,
       path.join(dbDir.path, 'uthmani.db'),
     );
+
+    // Copy local translation databases
+    await _copyTranslations(appSupportDir);
+  }
+
+  /// Copies all translation databases from assets to app support directory.
+  static Future<void> _copyTranslations(Directory appSupportDir) async {
+    final translationsDir = Directory(
+      path.join(appSupportDir.path, 'translations'),
+    );
+    if (!await translationsDir.exists()) {
+      await translationsDir.create(recursive: true);
+    }
+
+    try {
+      final jsonContent = await rootBundle
+          .loadString('${_translationsAssetDir}translations.json');
+      final List<dynamic> translations = json.decode(jsonContent);
+
+      for (final item in translations) {
+        final fileName = item['file'] as String;
+        final assetPath = '$_translationsAssetDir$fileName';
+        await _copyAssetToFile(
+          assetPath,
+          path.join(translationsDir.path, fileName),
+        );
+      }
+    } catch (e) {
+      print('Error copying translations: $e');
+    }
   }
 
   /// Copies an asset file to the target path if it doesn't already exist.
   /// Returns the path to the copied file.
   static Future<String> _copyAssetToFile(
-      String assetPath, String targetPath) async {
+    String assetPath,
+    String targetPath,
+  ) async {
     final targetFile = File(targetPath);
 
     // Always copy to ensure we have the latest version

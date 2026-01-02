@@ -9,6 +9,7 @@ import 'package:tajweed/quran_metadata.dart';
 import 'package:tajweed/mushaf_page_config.dart';
 import 'package:tajweed/quran_enc_translation_service.dart';
 import 'package:tajweed/mushaf_wbw_service.dart';
+import 'package:tajweed/local_translation_service.dart';
 
 /// Generates HTML output for Mushaf pages with Tajweed coloring
 class MushafHtmlGenerator {
@@ -21,6 +22,7 @@ class MushafHtmlGenerator {
   final bool includeWbw;
   final String? wbwLanguage;
   final QuranEncTranslationService? translationService;
+  final LocalTranslationService? localTranslationService;
   final String? translationKey;
 
   // Cached base64 encoded fonts
@@ -35,6 +37,7 @@ class MushafHtmlGenerator {
     this.includeWbw = false,
     this.wbwLanguage,
     this.translationService,
+    this.localTranslationService,
     this.translationKey,
   })  : margins = margins ?? pageSize.margins,
         _wordMapper = MushafWordMapper(),
@@ -733,15 +736,22 @@ class MushafHtmlGenerator {
     return buffer.toString();
   }
 
-  /// Build translation column HTML for the ayahs present on the page.
   Future<String> _buildTranslationColumn(
     List<MapEntry<int, int>> ayahOrder,
     Map<int, Set<int>> ayahsBySurah,
   ) async {
     final buffer = StringBuffer();
-    if (!includeTranslation ||
-        translationService == null ||
-        translationKey == null) {
+    if (!includeTranslation || translationKey == null) {
+      buffer.writeln('<div class="translation-wrapper"></div>');
+      return buffer.toString();
+    }
+
+    final isLocal = translationKey!.startsWith('local:');
+    if (isLocal && localTranslationService == null) {
+      buffer.writeln('<div class="translation-wrapper"></div>');
+      return buffer.toString();
+    }
+    if (!isLocal && translationService == null) {
       buffer.writeln('<div class="translation-wrapper"></div>');
       return buffer.toString();
     }
@@ -751,8 +761,17 @@ class MushafHtmlGenerator {
     for (final entry in ayahsBySurah.entries) {
       final surah = entry.key;
       final ayahs = entry.value;
-      final surahTranslations = await translationService!
-          .fetchSurahTranslations(translationKey!, surah);
+
+      Map<int, String> surahTranslations;
+      if (isLocal) {
+        final fileName = translationKey!.substring(6); // remove 'local:'
+        surahTranslations = await localTranslationService!
+            .fetchSurahTranslations(fileName, surah);
+      } else {
+        surahTranslations = await translationService!
+            .fetchSurahTranslations(translationKey!, surah);
+      }
+
       for (final ayah in ayahs) {
         final key = '$surah:$ayah';
         final text = surahTranslations[ayah];

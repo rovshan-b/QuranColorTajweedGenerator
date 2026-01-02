@@ -7,6 +7,7 @@ import 'package:tajweed/mushaf_html_generator.dart';
 import 'package:tajweed/mushaf_page_config.dart';
 import 'package:tajweed/quran_enc_translation_service.dart';
 import 'package:tajweed/mushaf_wbw_service.dart';
+import 'package:tajweed/local_translation_service.dart';
 
 /// Screen for generating Mushaf HTML with Tajweed coloring
 class MushafPreviewScreen extends StatefulWidget {
@@ -29,6 +30,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   List<TranslationInfo> _availableTranslations = const [];
   final QuranEncTranslationService _translationService =
       QuranEncTranslationService();
+  final LocalTranslationService _localTranslationService =
+      LocalTranslationService();
 
   // Word-by-word controls
   bool _includeWbw = false;
@@ -47,28 +50,37 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   @override
   void initState() {
     super.initState();
-    _loadTranslations();
+    _initAndLoad();
+  }
+
+  Future<void> _initAndLoad() async {
+    await MushafDbInitializer.initialize();
+    await _loadTranslations();
   }
 
   Future<void> _loadTranslations() async {
     try {
-      final translations = await _translationService.fetchTranslations();
+      final apiTranslations = await _translationService.fetchTranslations();
+      final localTranslations =
+          await _localTranslationService.getLocalTranslations();
 
-      if (translations.isEmpty) {
+      final allTranslations = [...localTranslations, ...apiTranslations];
+
+      if (allTranslations.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                  'Failed to fetch translations from QuranEnc. Check your connection.'),
+                  'Failed to fetch translations. Check your connection and local resources.'),
               backgroundColor: Colors.orange,
             ),
           );
         }
       }
 
-      _availableTranslations = translations;
+      _availableTranslations = allTranslations;
       _selectedTranslationKey = _selectedTranslationKey ??
-          (translations.isNotEmpty ? translations.first.key : 'english_saheeh');
+          (allTranslations.isNotEmpty ? allTranslations.first.key : null);
       if (mounted) {
         setState(() {});
       }
@@ -297,6 +309,11 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                           icon: Icon(Icons.description),
                         ),
                         ButtonSegment(
+                          value: PageSize.b5,
+                          label: Text('B5'),
+                          icon: Icon(Icons.menu_book),
+                        ),
+                        ButtonSegment(
                           value: PageSize.a5,
                           label: Text('A5'),
                           icon: Icon(Icons.crop_portrait),
@@ -498,6 +515,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,
         translationKey: _selectedTranslationKey,
         translationService: _includeTranslation ? _translationService : null,
+        localTranslationService:
+            _includeTranslation ? _localTranslationService : null,
       );
       final html = await generator.generateHtml(
         startPage: _startPage,

@@ -14,9 +14,17 @@ class TranslationInfo {
       {required this.key, required this.name, required this.language});
 
   factory TranslationInfo.fromMap(Map<String, dynamic> map) {
-    final key = (map['key'] ?? '').toString();
-    final display = (map['title'] ?? map['key'] ?? '').toString();
-    final lang = (map['language_iso_code'] ?? '').toString();
+    final key = map['key']?.toString() ?? '';
+
+    // Ensure we get a meaningful title, falling back to key if title is missing or boolean false
+    var title = map['title'];
+    if (title == null || title == false || title.toString().isEmpty) {
+      title = map['key'];
+    }
+
+    final display = title?.toString() ?? 'Unknown';
+    final lang = map['language_iso_code']?.toString() ?? '??';
+
     return TranslationInfo(key: key, name: display, language: lang);
   }
 }
@@ -35,6 +43,7 @@ class QuranEncTranslationService {
     final translations = result
         .whereType<Map<String, dynamic>>()
         .map<TranslationInfo>((m) => TranslationInfo.fromMap(m))
+        .where((t) => t.key.isNotEmpty && t.name != 'false' && t.name != 'null')
         .toList();
 
     // Sort translations alphabetically by name
