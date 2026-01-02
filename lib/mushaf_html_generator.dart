@@ -347,7 +347,7 @@ class MushafHtmlGenerator {
     .wbw-text {
       display: block;
       width: 100%;
-      max-width: 12mm;
+      max-width: 8mm;
       font-size: ${pageSize.wbwFontSize}px;
       font-family: sans-serif;
       line-height: ${pageSize.wbwTranslationLineHeight};
