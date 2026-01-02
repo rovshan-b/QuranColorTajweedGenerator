@@ -7,6 +7,7 @@ import 'package:tajweed/tajweed_color_mapper.dart';
 import 'package:tajweed/tajweed_rule.dart';
 import 'package:tajweed/quran_metadata.dart';
 import 'package:tajweed/mushaf_page_config.dart';
+import 'package:tajweed/quran_enc_translation_service.dart';
 
 /// Generates HTML output for Mushaf pages with Tajweed coloring
 class MushafHtmlGenerator {
@@ -14,6 +15,9 @@ class MushafHtmlGenerator {
   final MushafWordMapper _wordMapper;
   final PageSize pageSize;
   final BookMargins margins;
+  final bool includeTranslation;
+  final QuranEncTranslationService? translationService;
+  final String? translationKey;
 
   // Cached base64 encoded fonts
   String? _kitabRegularBase64;
@@ -23,6 +27,9 @@ class MushafHtmlGenerator {
     this._dbReader, {
     this.pageSize = PageSize.a4,
     BookMargins? margins,
+    this.includeTranslation = false,
+    this.translationService,
+    this.translationKey,
   })  : margins = margins ?? pageSize.margins,
         _wordMapper = MushafWordMapper();
 
@@ -109,6 +116,14 @@ class MushafHtmlGenerator {
   }
 
   String _generateHtmlHeader() {
+    final arabicScale =
+        includeTranslation ? pageSize.translationArabicScale : 1.0;
+    final bodyFontSize = pageSize.fontSize * arabicScale;
+    final bodyLineHeight = pageSize.lineHeight * arabicScale;
+    final surahFontSize = pageSize.surahFontSize * arabicScale;
+    final ayaNumberFontSize = pageSize.ayaNumberFontSize * arabicScale;
+    final headerFontSize = pageSize.headerFontSize * arabicScale;
+
     // Build tajweed CSS classes from rule-color mapper
     final tajweedCss = TajweedRule.values.map((r) {
       final key = _tajweedRuleKey(r);
@@ -218,7 +233,7 @@ class MushafHtmlGenerator {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: ${pageSize.headerFontSize}px;
+      font-size: ${headerFontSize.toStringAsFixed(2)}px;
       margin-bottom: ${(pageSize.paddingMm * 0.3).round()}mm;
       padding-bottom: ${(pageSize.paddingMm * 0.2).round()}mm;
       border-bottom: 1px solid #ccc;
@@ -242,8 +257,8 @@ class MushafHtmlGenerator {
     }
     
     .line {
-      font-size: ${pageSize.fontSize}px;
-      line-height: ${pageSize.lineHeight};
+      font-size: ${bodyFontSize.toStringAsFixed(2)}px;
+      line-height: ${bodyLineHeight.toStringAsFixed(2)};
       margin: 0;
       padding: 2px 0;
       white-space: nowrap;
@@ -257,13 +272,13 @@ class MushafHtmlGenerator {
       text-align: justify;
       text-align-last: justify;
       text-justify: inter-word;
-      word-spacing: -0.25em;
+      word-spacing: ${pageSize.wordSpacing}em;
       letter-spacing: -0.05em;
     }
     
     .surah-header {
       text-align: center;
-      font-size: ${pageSize.surahFontSize}px;
+      font-size: ${surahFontSize.toStringAsFixed(2)}px;
       font-weight: bold;
       padding: 8px 0;
       margin: 5px 0;
@@ -274,13 +289,13 @@ class MushafHtmlGenerator {
     
     .basmallah {
       text-align: center;
-      font-size: ${pageSize.fontSize}px;
+      font-size: ${bodyFontSize.toStringAsFixed(2)}px;
       padding: 10px 0;
       color: #000;
     }
     
     .aya-number {
-      font-size: ${pageSize.ayaNumberFontSize}px;
+      font-size: ${ayaNumberFontSize.toStringAsFixed(2)}px;
       color: #000;
       padding: 0 2px;
     }
@@ -327,6 +342,68 @@ class MushafHtmlGenerator {
       font-size: ${pageSize.legendFontSize}px;
       font-family: sans-serif;
       color: #333;
+    }
+
+    /* Two-pane body for translation mode */
+    .page-body {
+      display: flex;
+      direction: ltr;
+      gap: ${(pageSize.paddingMm * 0.35).toStringAsFixed(1)}mm;
+      flex: 1;
+      align-items: stretch;
+    }
+    .page-odd .page-body { flex-direction: row; }
+    .page-even .page-body { flex-direction: row-reverse; }
+
+    .pane-ar {
+      flex: ${(1 - pageSize.translationWidthFraction).toStringAsFixed(2)};
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .pane-tr {
+      flex: ${pageSize.translationWidthFraction.toStringAsFixed(2)};
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 10px;
+      margin-bottom: ${(pageSize.paddingMm * 0.3).toStringAsFixed(1)}mm;
+      background: #f9f7ef;
+      border: 1px solid #e0ddcf;
+      border-radius: 8px;
+      min-width: 0;
+      max-height: 100%;
+      overflow: hidden;
+    }
+
+    .translation-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 100%;
+      overflow: hidden;
+    }
+
+    .translation-line {
+      font-size: ${pageSize.translationFontSize}px;
+      line-height: ${pageSize.translationLineHeight};
+      color: #333;
+      direction: ltr;
+      text-align: left;
+      word-break: break-word;
+    }
+
+    .translation-ayah {
+      display: inline-block;
+      font-weight: 600;
+      margin-right: 6px;
+      color: #666;
+    }
+
+    .translation-text {
+      color: #222;
     }
     
     /* Cover page styles */
@@ -385,23 +462,23 @@ class MushafHtmlGenerator {
         page-break-after: always;
       }
       .page-header {
-        font-size: ${(pageSize.headerFontSize * 0.9).round()}px;
+        font-size: ${(headerFontSize * 0.9).round()}px;
       }
       .line {
-        font-size: ${(pageSize.fontSize * 0.99).round()}px;
-        line-height: ${pageSize.lineHeight * 0.80};
+        font-size: ${(bodyFontSize * 0.99).round()}px;
+        line-height: ${(bodyLineHeight * 1.00).toStringAsFixed(2)};
       }
       .surah-header {
-        font-size: ${(pageSize.surahFontSize * 0.85).round()}px;
+        font-size: ${(surahFontSize * 0.85).round()}px;
         padding: 3px 0;
         margin: 1px 0;
       }
       .basmallah {
-        font-size: ${(pageSize.fontSize * 0.99).round()}px;
+        font-size: ${(bodyFontSize * 0.99).round()}px;
         padding: 3px 0;
       }
       .aya-number {
-        font-size: ${(pageSize.ayaNumberFontSize * 0.99).round()}px;
+        font-size: ${(ayaNumberFontSize * 0.99).round()}px;
       }
     }
   </style>
@@ -485,6 +562,56 @@ class MushafHtmlGenerator {
     final physicalPageNumber = pageNumber + 1 + prefacePages;
     final pageClass = physicalPageNumber.isOdd ? 'page-odd' : 'page-even';
 
+    // Buffers for Arabic content and translation tracking
+    final arabicBuffer = StringBuffer();
+    bool inLinesWrapper = false;
+    final Map<int, Set<int>> ayahsBySurah = {};
+    final Set<String> ayahSeen = {};
+    final List<MapEntry<int, int>> ayahOrder = [];
+
+    for (final line in lines) {
+      switch (line.lineType) {
+        case 'surah_name':
+          if (inLinesWrapper) {
+            arabicBuffer.writeln('</div>');
+            inLinesWrapper = false;
+          }
+          arabicBuffer.writeln(_generateSurahHeader(line.surahNumber ?? 1));
+          break;
+        case 'basmallah':
+          if (!inLinesWrapper) {
+            arabicBuffer.writeln('<div class="lines-wrapper">');
+            inLinesWrapper = true;
+          }
+          arabicBuffer.writeln(_generateBasmallah());
+          break;
+        case 'ayah':
+          if (!inLinesWrapper) {
+            arabicBuffer.writeln('<div class="lines-wrapper">');
+            inLinesWrapper = true;
+          }
+          final words =
+              await _dbReader.getWords(line.firstWordId!, line.lastWordId!);
+          final lineHtml = await _generateAyahLine(line, preloadedWords: words);
+          arabicBuffer.writeln(lineHtml);
+
+          // Collect ayahs present on this page for translation
+          for (final w in words) {
+            if (w.isAyaNumber) continue;
+            final key = '${w.surah}:${w.ayah}';
+            if (ayahSeen.add(key)) {
+              ayahOrder.add(MapEntry(w.surah, w.ayah));
+              ayahsBySurah.putIfAbsent(w.surah, () => <int>{}).add(w.ayah);
+            }
+          }
+          break;
+      }
+    }
+
+    if (inLinesWrapper) {
+      arabicBuffer.writeln('</div>');
+    }
+
     buffer.writeln('<div id="page-${pageNumber}" class="page $pageClass">');
     buffer.writeln('<div class="page-content">');
     buffer.writeln('<div class="page-header">');
@@ -493,42 +620,21 @@ class MushafHtmlGenerator {
     buffer.writeln('<span class="page-header-juz">$juzName</span>');
     buffer.writeln('</div>');
 
-    // Track if we're inside a lines-wrapper
-    bool inLinesWrapper = false;
-
-    for (final line in lines) {
-      switch (line.lineType) {
-        case 'surah_name':
-          // Close lines-wrapper if open, render header, then reopen
-          if (inLinesWrapper) {
-            buffer.writeln('</div>'); // close lines-wrapper
-            inLinesWrapper = false;
-          }
-          buffer.writeln(_generateSurahHeader(line.surahNumber ?? 1));
-          break;
-        case 'basmallah':
-          // Open lines-wrapper if not already open
-          if (!inLinesWrapper) {
-            buffer.writeln('<div class="lines-wrapper">');
-            inLinesWrapper = true;
-          }
-          buffer.writeln(_generateBasmallah());
-          break;
-        case 'ayah':
-          // Open lines-wrapper if not already open
-          if (!inLinesWrapper) {
-            buffer.writeln('<div class="lines-wrapper">');
-            inLinesWrapper = true;
-          }
-          final lineHtml = await _generateAyahLine(line);
-          buffer.writeln(lineHtml);
-          break;
-      }
-    }
-
-    // Close lines-wrapper if still open
-    if (inLinesWrapper) {
-      buffer.writeln('</div>'); // close lines-wrapper
+    if (includeTranslation &&
+        translationService != null &&
+        translationKey != null) {
+      final translationHtml =
+          await _buildTranslationColumn(ayahOrder, ayahsBySurah);
+      buffer.writeln('<div class="page-body">');
+      buffer.writeln('<div class="pane-ar">');
+      buffer.writeln(arabicBuffer.toString());
+      buffer.writeln('</div>');
+      buffer.writeln('<div class="pane-tr">');
+      buffer.writeln(translationHtml);
+      buffer.writeln('</div>');
+      buffer.writeln('</div>');
+    } else {
+      buffer.writeln(arabicBuffer.toString());
     }
 
     buffer.writeln('</div>'); // close page-content
@@ -567,6 +673,50 @@ class MushafHtmlGenerator {
     }
 
     buffer.writeln('</div>');
+    return buffer.toString();
+  }
+
+  /// Build translation column HTML for the ayahs present on the page.
+  Future<String> _buildTranslationColumn(
+    List<MapEntry<int, int>> ayahOrder,
+    Map<int, Set<int>> ayahsBySurah,
+  ) async {
+    final buffer = StringBuffer();
+    if (!includeTranslation ||
+        translationService == null ||
+        translationKey == null) {
+      buffer.writeln('<div class="translation-wrapper"></div>');
+      return buffer.toString();
+    }
+
+    // Fetch translations per surah.
+    final Map<String, String> translationLookup = {};
+    for (final entry in ayahsBySurah.entries) {
+      final surah = entry.key;
+      final ayahs = entry.value;
+      final surahTranslations = await translationService!
+          .fetchSurahTranslations(translationKey!, surah);
+      for (final ayah in ayahs) {
+        final key = '$surah:$ayah';
+        final text = surahTranslations[ayah];
+        if (text != null) {
+          translationLookup[key] = text;
+        }
+      }
+    }
+
+    buffer.writeln('<div class="translation-wrapper">');
+    for (final pair in ayahOrder) {
+      final key = '${pair.key}:${pair.value}';
+      final text = translationLookup[key] ?? '—';
+      buffer.writeln('<div class="translation-line">');
+      buffer.writeln('<span class="translation-ayah">${pair.value}</span>');
+      buffer.writeln(
+          '<span class="translation-text">${_escapeHtml(text)}</span>');
+      buffer.writeln('</div>');
+    }
+    buffer.writeln('</div>');
+
     return buffer.toString();
   }
 
@@ -681,14 +831,15 @@ class MushafHtmlGenerator {
 ''';
   }
 
-  Future<String> _generateAyahLine(MushafLine line) async {
+  Future<String> _generateAyahLine(MushafLine line,
+      {List<MushafWord>? preloadedWords}) async {
     if (line.firstWordId == null || line.lastWordId == null) {
       throw Exception(
           'Ayah line on page ${line.pageNumber} line ${line.lineNumber} has no word IDs!');
-      //return '<div class="line line-centered"></div>';
     }
 
-    final words = await _dbReader.getWords(line.firstWordId!, line.lastWordId!);
+    final words = preloadedWords ??
+        await _dbReader.getWords(line.firstWordId!, line.lastWordId!);
     if (words.isEmpty) {
       throw Exception(
           'No words found for page ${line.pageNumber} line ${line.lineNumber} (word IDs ${line.firstWordId}-${line.lastWordId})');

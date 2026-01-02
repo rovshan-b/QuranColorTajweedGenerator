@@ -1,4 +1,5 @@
 # Copilot Instructions for tajweed_to_pdf
+
 - Purpose: Flutter desktop app that generates HTML Mushaf pages with Tajweed coloring for browser-to-PDF printing; preview/generation flow lives in [lib/mushaf_preview_screen.dart](../lib/mushaf_preview_screen.dart).
 - App flow: [lib/main.dart](../lib/main.dart) boots MaterialApp -> MushafPreviewScreen; generation calls [lib/mushaf_db_initializer.dart](../lib/mushaf_db_initializer.dart) to copy bundled SQLite assets into app support dir, opens them via [lib/mushaf_db_reader.dart](../lib/mushaf_db_reader.dart), maps DB words to tajweed tokens with [lib/mushaf_word_mapper.dart](../lib/mushaf_word_mapper.dart), then renders HTML through [lib/mushaf_html_generator.dart](../lib/mushaf_html_generator.dart).
 - Assets: Requires `resources/qpc-v4-tajweed-15-lines.db` (page layout) and `resources/uthmani.db` (word text) plus fonts in `assets/fonts/`; these are declared in [pubspec.yaml](../pubspec.yaml) and must stay in that location for asset bundling.

@@ -5,6 +5,7 @@ import 'package:tajweed/mushaf_db_initializer.dart';
 import 'package:tajweed/mushaf_db_reader.dart';
 import 'package:tajweed/mushaf_html_generator.dart';
 import 'package:tajweed/mushaf_page_config.dart';
+import 'package:tajweed/quran_enc_translation_service.dart';
 
 /// Screen for generating Mushaf HTML with Tajweed coloring
 class MushafPreviewScreen extends StatefulWidget {
@@ -21,6 +22,13 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   int _totalPages = 0;
   String? _outputPath;
 
+  // Translation controls
+  bool _includeTranslation = false;
+  String? _selectedTranslationKey;
+  List<TranslationInfo> _availableTranslations = const [];
+  final QuranEncTranslationService _translationService =
+      QuranEncTranslationService();
+
   // Page range for generation
   int _startPage = 1;
   int _endPage = 5;
@@ -30,6 +38,46 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
 
   // Book margin controllers with default values
   // Margins are now fixed per PageSize presets; UI controls removed
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTranslations();
+  }
+
+  Future<void> _loadTranslations() async {
+    try {
+      final translations = await _translationService.fetchTranslations();
+
+      if (translations.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Failed to fetch translations from QuranEnc. Check your connection.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+
+      _availableTranslations = translations;
+      _selectedTranslationKey = _selectedTranslationKey ??
+          (translations.isNotEmpty ? translations.first.key : 'english_saheeh');
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading translations: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -106,6 +154,71 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                       'Quran Mushaf has 604 pages total',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Translation toggle and selection
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Translation',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      title: const Text('Include translation (outer column)'),
+                      value: _includeTranslation,
+                      onChanged: (val) {
+                        setState(() {
+                          _includeTranslation = val;
+                          if (_includeTranslation &&
+                              _selectedTranslationKey == null) {
+                            _selectedTranslationKey =
+                                _availableTranslations.isNotEmpty
+                                    ? _availableTranslations.first.key
+                                    : 'english_saheeh';
+                          }
+                        });
+                      },
+                    ),
+                    if (_includeTranslation) ...[
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: _selectedTranslationKey,
+                        decoration: const InputDecoration(
+                          labelText: 'Translation source',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _availableTranslations
+                            .map(
+                              (t) => DropdownMenuItem(
+                                value: t.key,
+                                child: Text('${t.name} (${t.language})'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedTranslationKey = val;
+                          });
+                        },
+                      ),
+                      if (_availableTranslations.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            'No translations fetched; using fallback if available.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ),
@@ -333,6 +446,9 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
       final generator = MushafHtmlGenerator(
         dbReader,
         pageSize: _selectedPageSize,
+        includeTranslation: _includeTranslation,
+        translationKey: _selectedTranslationKey,
+        translationService: _includeTranslation ? _translationService : null,
       );
       final html = await generator.generateHtml(
         startPage: _startPage,

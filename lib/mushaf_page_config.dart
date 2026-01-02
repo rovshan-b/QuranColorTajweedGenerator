@@ -33,7 +33,7 @@ enum PageSize {
     widthMm: 297,
     heightMm: 420,
     fontSize: 46,
-    lineHeight: 2.0,
+    lineHeight: 1.7,
     paddingMm: 22,
     surahFontSize: 46,
     ayaNumberFontSize: 34,
@@ -44,6 +44,11 @@ enum PageSize {
     legendPadding: 16,
     headerFontSize: 24,
     tocFontSize: 24,
+    translationFontSize: 14,
+    translationLineHeight: 1.2,
+    translationWidthFraction: 0.25,
+    translationArabicScale: 0.75,
+    wordSpacing: -0.35,
     tocEntriesPerPage: 27,
     margins: BookMargins(
       gutterMm: 26.0,
@@ -57,7 +62,7 @@ enum PageSize {
     widthMm: 210,
     heightMm: 297,
     fontSize: 30,
-    lineHeight: 2.0,
+    lineHeight: 1.7,
     paddingMm: 15,
     surahFontSize: 36,
     ayaNumberFontSize: 28,
@@ -68,6 +73,11 @@ enum PageSize {
     legendPadding: 12,
     headerFontSize: 20,
     tocFontSize: 18,
+    translationFontSize: 11,
+    translationLineHeight: 1.10,
+    translationWidthFraction: 0.20,
+    translationArabicScale: 0.80,
+    wordSpacing: -0.35,
     tocEntriesPerPage: 21,
     margins: BookMargins(
       gutterMm: 26.0,
@@ -80,8 +90,8 @@ enum PageSize {
     name: 'A5',
     widthMm: 148,
     heightMm: 210,
-    fontSize: 17,
-    lineHeight: 1.95,
+    fontSize: 18,
+    lineHeight: 1.5,
     paddingMm: 12,
     surahFontSize: 26,
     ayaNumberFontSize: 20,
@@ -92,6 +102,11 @@ enum PageSize {
     legendPadding: 6,
     headerFontSize: 14,
     tocFontSize: 12,
+    translationFontSize: 8,
+    translationLineHeight: 1.0,
+    translationWidthFraction: 0.25,
+    translationArabicScale: 0.80,
+    wordSpacing: -0.5,
     tocEntriesPerPage: 16,
     margins: BookMargins(
       gutterMm: 26.0,
@@ -117,6 +132,11 @@ enum PageSize {
       required this.legendPadding,
       required this.headerFontSize,
       required this.tocFontSize,
+      required this.translationFontSize,
+      required this.translationLineHeight,
+      required this.translationWidthFraction,
+      required this.translationArabicScale,
+      required this.wordSpacing,
       required this.margins,
       required this.tocEntriesPerPage});
 
@@ -135,6 +155,18 @@ enum PageSize {
   final int legendPadding;
   final int headerFontSize;
   final int tocFontSize;
+  final int translationFontSize;
+  final double translationLineHeight;
+
+  /// Fraction of available width given to the translation column when enabled.
+  final double translationWidthFraction;
+
+  /// Scale applied to Arabic fonts when translation column is enabled to keep content on one page.
+  final double translationArabicScale;
+
+  /// Word spacing for Arabic text in em.
+  final double wordSpacing;
+
   final BookMargins margins;
   final int tocEntriesPerPage;
 }
