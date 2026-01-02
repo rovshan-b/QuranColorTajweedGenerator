@@ -137,7 +137,8 @@ class MushafHtmlGenerator {
     }
 
     final bodyFontSize = pageSize.fontSize * arabicScale;
-    final bodyLineHeight = pageSize.lineHeight * (includeWbw ? 1.2 : 1.0);
+    final bodyLineHeight =
+        includeWbw ? pageSize.wbwArabicLineHeight : pageSize.lineHeight;
     final surahFontSize = pageSize.surahFontSize * arabicScale;
     final ayaNumberFontSize = pageSize.ayaNumberFontSize * arabicScale;
     final headerFontSize = pageSize.headerFontSize * arabicScale;
@@ -346,7 +347,7 @@ class MushafHtmlGenerator {
       max-width: 12mm;
       font-size: ${pageSize.wbwFontSize}px;
       font-family: sans-serif;
-      line-height: 1.1;
+      line-height: ${pageSize.wbwTranslationLineHeight};
       margin-top: 2px;
       text-align: center;
       text-align-last: center;
@@ -360,7 +361,7 @@ class MushafHtmlGenerator {
     }
 
     .wbw-even { color: #666; }
-    .wbw-odd { color: #0056b3; }
+    .wbw-odd { color: #7d7542; }
     
     /* Tajweed color classes */
     $tajweedCss
@@ -454,6 +455,12 @@ class MushafHtmlGenerator {
 
     .translation-text {
       color: #222;
+    }
+
+    .translation-separator {
+      border-top: 1px solid #d4d1c1;
+      margin: 4px 0;
+      width: 100%;
     }
     
     /* Cover page styles */
@@ -756,7 +763,14 @@ class MushafHtmlGenerator {
     }
 
     buffer.writeln('<div class="translation-wrapper">');
+    int? lastSurah;
     for (final pair in ayahOrder) {
+      final surah = pair.key;
+      if (lastSurah != null && lastSurah != surah) {
+        buffer.writeln('<div class="translation-separator"></div>');
+      }
+      lastSurah = surah;
+
       final key = '${pair.key}:${pair.value}';
       final text = translationLookup[key] ?? '—';
       buffer.writeln('<div class="translation-line">');

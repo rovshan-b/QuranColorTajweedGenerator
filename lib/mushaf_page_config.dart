@@ -50,6 +50,8 @@ enum PageSize {
     translationArabicScale: 0.75,
     wbwFontSize: 12,
     wbwArabicScale: 0.70,
+    wbwArabicLineHeight: 2.0,
+    wbwTranslationLineHeight: 1.1,
     wordSpacing: -0.35,
     tocEntriesPerPage: 27,
     margins: BookMargins(
@@ -81,6 +83,8 @@ enum PageSize {
     translationArabicScale: 0.80,
     wbwFontSize: 8,
     wbwArabicScale: 0.75,
+    wbwArabicLineHeight: 1.5,
+    wbwTranslationLineHeight: 1.0,
     wordSpacing: -0.35,
     tocEntriesPerPage: 21,
     margins: BookMargins(
@@ -112,6 +116,8 @@ enum PageSize {
     translationArabicScale: 0.80,
     wbwFontSize: 7,
     wbwArabicScale: 0.75,
+    wbwArabicLineHeight: 1.8,
+    wbwTranslationLineHeight: 1.0,
     wordSpacing: -0.5,
     tocEntriesPerPage: 16,
     margins: BookMargins(
@@ -144,26 +150,61 @@ enum PageSize {
       required this.translationArabicScale,
       required this.wbwFontSize,
       required this.wbwArabicScale,
+      required this.wbwArabicLineHeight,
+      required this.wbwTranslationLineHeight,
       required this.wordSpacing,
       required this.margins,
       required this.tocEntriesPerPage});
 
+  /// Display name of the page size (e.g., 'A4').
   final String name;
+
+  /// Page width in millimeters.
   final int widthMm;
+
+  /// Page height in millimeters.
   final int heightMm;
+
+  /// Base font size for Arabic text in pixels.
   final int fontSize;
+
+  /// Line height multiplier for Arabic text.
   final double lineHeight;
+
+  /// Internal page padding in millimeters.
   final int paddingMm;
+
+  /// Font size for Surah headers in pixels.
   final int surahFontSize;
+
+  /// Font size for Ayah number markers in pixels.
   final int ayaNumberFontSize;
+
+  /// Font size for the Tajweed legend labels in pixels.
   final int legendFontSize;
+
+  /// Size (width/height) of the color boxes in the legend in pixels.
   final int legendColorSize;
+
+  /// Gap between legend items in pixels.
   final int legendGap;
+
+  /// Gap between the color box and label within a legend item in pixels.
   final int legendItemGap;
+
+  /// Top padding for the legend section in pixels.
   final int legendPadding;
+
+  /// Font size for the page header (Surah name, page number, Juz) in pixels.
   final int headerFontSize;
+
+  /// Font size for Table of Contents entries in pixels.
   final int tocFontSize;
+
+  /// Font size for the translation column text in pixels.
   final int translationFontSize;
+
+  /// Line height multiplier for the translation column text.
   final double translationLineHeight;
 
   /// Fraction of available width given to the translation column when enabled.
@@ -178,9 +219,18 @@ enum PageSize {
   /// Scale applied to Arabic fonts when word-by-word translation is enabled.
   final double wbwArabicScale;
 
+  /// Line height for Arabic text when word-by-word translation is enabled.
+  final double wbwArabicLineHeight;
+
+  /// Line height for word-by-word translation text.
+  final double wbwTranslationLineHeight;
+
   /// Word spacing for Arabic text in em.
   final double wordSpacing;
 
+  /// Margin configuration for the page.
   final BookMargins margins;
+
+  /// Number of Surah entries to display per page in the Table of Contents.
   final int tocEntriesPerPage;
 }
