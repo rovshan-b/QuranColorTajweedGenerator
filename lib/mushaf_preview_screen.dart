@@ -6,6 +6,7 @@ import 'package:tajweed/mushaf_db_reader.dart';
 import 'package:tajweed/mushaf_html_generator.dart';
 import 'package:tajweed/mushaf_page_config.dart';
 import 'package:tajweed/quran_enc_translation_service.dart';
+import 'package:tajweed/mushaf_wbw_service.dart';
 
 /// Screen for generating Mushaf HTML with Tajweed coloring
 class MushafPreviewScreen extends StatefulWidget {
@@ -28,6 +29,10 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   List<TranslationInfo> _availableTranslations = const [];
   final QuranEncTranslationService _translationService =
       QuranEncTranslationService();
+
+  // Word-by-word controls
+  bool _includeWbw = false;
+  String _selectedWbwLanguage = 'en';
 
   // Page range for generation
   int _startPage = 1;
@@ -218,6 +223,48 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
+                      const Divider(height: 32),
+                      Text(
+                        'Word-by-Word',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        title: const Text('Include word-by-word translation'),
+                        subtitle: const Text(
+                            'Displays translation under each Arabic word'),
+                        value: _includeWbw,
+                        onChanged: (val) {
+                          setState(() {
+                            _includeWbw = val;
+                          });
+                        },
+                      ),
+                      if (_includeWbw) ...[
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: _selectedWbwLanguage,
+                          decoration: const InputDecoration(
+                            labelText: 'WBW Language',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: MushafWbwService.availableLanguages
+                              .map(
+                                (lang) => DropdownMenuItem(
+                                  value: lang,
+                                  child: Text(lang.toUpperCase()),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedWbwLanguage = val;
+                              });
+                            }
+                          },
+                        ),
+                      ],
                     ],
                   ],
                 ),
@@ -447,6 +494,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         dbReader,
         pageSize: _selectedPageSize,
         includeTranslation: _includeTranslation,
+        includeWbw: _includeWbw,
+        wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,
         translationKey: _selectedTranslationKey,
         translationService: _includeTranslation ? _translationService : null,
       );

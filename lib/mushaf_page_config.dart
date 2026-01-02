@@ -48,6 +48,8 @@ enum PageSize {
     translationLineHeight: 1.2,
     translationWidthFraction: 0.25,
     translationArabicScale: 0.75,
+    wbwFontSize: 12,
+    wbwArabicScale: 0.70,
     wordSpacing: -0.35,
     tocEntriesPerPage: 27,
     margins: BookMargins(
@@ -77,6 +79,8 @@ enum PageSize {
     translationLineHeight: 1.10,
     translationWidthFraction: 0.20,
     translationArabicScale: 0.80,
+    wbwFontSize: 8,
+    wbwArabicScale: 0.75,
     wordSpacing: -0.35,
     tocEntriesPerPage: 21,
     margins: BookMargins(
@@ -106,6 +110,8 @@ enum PageSize {
     translationLineHeight: 1.0,
     translationWidthFraction: 0.25,
     translationArabicScale: 0.80,
+    wbwFontSize: 7,
+    wbwArabicScale: 0.75,
     wordSpacing: -0.5,
     tocEntriesPerPage: 16,
     margins: BookMargins(
@@ -136,6 +142,8 @@ enum PageSize {
       required this.translationLineHeight,
       required this.translationWidthFraction,
       required this.translationArabicScale,
+      required this.wbwFontSize,
+      required this.wbwArabicScale,
       required this.wordSpacing,
       required this.margins,
       required this.tocEntriesPerPage});
@@ -163,6 +171,12 @@ enum PageSize {
 
   /// Scale applied to Arabic fonts when translation column is enabled to keep content on one page.
   final double translationArabicScale;
+
+  /// Font size for word-by-word translation.
+  final int wbwFontSize;
+
+  /// Scale applied to Arabic fonts when word-by-word translation is enabled.
+  final double wbwArabicScale;
 
   /// Word spacing for Arabic text in em.
   final double wordSpacing;

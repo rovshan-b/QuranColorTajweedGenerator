@@ -8,14 +8,18 @@ import 'package:tajweed/tajweed_rule.dart';
 import 'package:tajweed/quran_metadata.dart';
 import 'package:tajweed/mushaf_page_config.dart';
 import 'package:tajweed/quran_enc_translation_service.dart';
+import 'package:tajweed/mushaf_wbw_service.dart';
 
 /// Generates HTML output for Mushaf pages with Tajweed coloring
 class MushafHtmlGenerator {
   final MushafDbReader _dbReader;
   final MushafWordMapper _wordMapper;
+  final MushafWbwService _wbwService;
   final PageSize pageSize;
   final BookMargins margins;
   final bool includeTranslation;
+  final bool includeWbw;
+  final String? wbwLanguage;
   final QuranEncTranslationService? translationService;
   final String? translationKey;
 
@@ -28,10 +32,13 @@ class MushafHtmlGenerator {
     this.pageSize = PageSize.a4,
     BookMargins? margins,
     this.includeTranslation = false,
+    this.includeWbw = false,
+    this.wbwLanguage,
     this.translationService,
     this.translationKey,
   })  : margins = margins ?? pageSize.margins,
-        _wordMapper = MushafWordMapper();
+        _wordMapper = MushafWordMapper(),
+        _wbwService = MushafWbwService();
 
   /// Load and cache fonts as base64
   Future<void> _loadFonts() async {
@@ -83,6 +90,11 @@ class MushafHtmlGenerator {
     // Load fonts first
     await _loadFonts();
 
+    // Load WBW if enabled
+    if (includeWbw && wbwLanguage != null) {
+      await _wbwService.load(wbwLanguage!);
+    }
+
     final buffer = StringBuffer();
 
     // Write HTML header with styles
@@ -116,10 +128,16 @@ class MushafHtmlGenerator {
   }
 
   String _generateHtmlHeader() {
-    final arabicScale =
-        includeTranslation ? pageSize.translationArabicScale : 1.0;
+    double arabicScale = 1.0;
+    if (includeTranslation) {
+      arabicScale *= pageSize.translationArabicScale;
+    }
+    if (includeWbw) {
+      arabicScale *= pageSize.wbwArabicScale;
+    }
+
     final bodyFontSize = pageSize.fontSize * arabicScale;
-    final bodyLineHeight = pageSize.lineHeight * arabicScale;
+    final bodyLineHeight = pageSize.lineHeight * (includeWbw ? 1.2 : 1.0);
     final surahFontSize = pageSize.surahFontSize * arabicScale;
     final ayaNumberFontSize = pageSize.ayaNumberFontSize * arabicScale;
     final headerFontSize = pageSize.headerFontSize * arabicScale;
@@ -214,6 +232,7 @@ class MushafHtmlGenerator {
       margin: 0;
       position: relative;
       background: transparent;
+      direction: rtl;
     }
 
     /* Table of Contents wrapper: top-aligned, separate from ayah lines-wrapper */
@@ -300,6 +319,14 @@ class MushafHtmlGenerator {
       padding: 0 2px;
     }
     
+    .word-container {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      vertical-align: top;
+      margin: 0 2px;
+    }
+
     .word {
       display: inline;
       white-space: nowrap;
@@ -312,6 +339,28 @@ class MushafHtmlGenerator {
       font-feature-settings: "liga" 1, "calt" 1, "kern" 1;
       -webkit-font-feature-settings: "liga" 1, "calt" 1, "kern" 1;
     }
+
+    .wbw-text {
+      display: block;
+      width: 100%;
+      max-width: 12mm;
+      font-size: ${pageSize.wbwFontSize}px;
+      font-family: sans-serif;
+      line-height: 1.1;
+      margin-top: 2px;
+      text-align: center;
+      text-align-last: center;
+      white-space: normal;
+      word-spacing: normal;
+      letter-spacing: normal;
+      direction: ltr;
+      margin-left: auto;
+      margin-right: auto;
+      align-self: center;
+    }
+
+    .wbw-even { color: #666; }
+    .wbw-odd { color: #0056b3; }
     
     /* Tajweed color classes */
     $tajweedCss
@@ -360,6 +409,7 @@ class MushafHtmlGenerator {
       display: flex;
       flex-direction: column;
       min-width: 0;
+      direction: rtl;
     }
 
     .pane-tr {
@@ -849,6 +899,7 @@ class MushafHtmlGenerator {
     final alignmentClass = line.isCentered ? 'line-centered' : 'line-justified';
     buffer.write('<div class="line $alignmentClass">');
 
+    int wordCounter = 0;
     for (final word in words) {
       if (word.isAyaNumber) {
         // Render aya number with special ornament styling
@@ -857,7 +908,9 @@ class MushafHtmlGenerator {
         // Map word to tajweed tokens and render
         final tajweedWord = _wordMapper.mapWordToTokens(word);
         if (tajweedWord != null) {
-          buffer.write(_generateColoredWord(tajweedWord));
+          buffer.write(
+              _generateColoredWord(tajweedWord, word, wordCounter % 2 == 0));
+          wordCounter++;
         } else {
           // Fallback: render plain text - LOG THIS as it indicates a mapping problem
           //_plainTextFallbackCount++;
@@ -875,12 +928,22 @@ class MushafHtmlGenerator {
   }
 
   String _generateAyaNumber(String arabicNumber) {
-    // Use the end-of-ayah ornament ۝ (U+06DD) with the number
-    return '<span class="aya-number">\u06DD$arabicNumber</span> ';
+    final content = '<span class="aya-number">\u06DD$arabicNumber</span>';
+
+    if (includeWbw) {
+      return '<div class="word-container">$content<span class="wbw-text">&nbsp;</span></div> ';
+    }
+
+    return '$content ';
   }
 
-  String _generateColoredWord(tajweedWord) {
+  String _generateColoredWord(tajweedWord, MushafWord word, bool isEven) {
     final buffer = StringBuffer();
+
+    if (includeWbw) {
+      buffer.write('<div class="word-container">');
+    }
+
     buffer.write('<span class="word">');
 
     final tokens = tajweedWord.tokens;
@@ -895,7 +958,23 @@ class MushafHtmlGenerator {
       buffer.write('<span class="$className">$escapedText</span>');
     }
 
-    buffer.write('</span> ');
+    buffer.write('</span>');
+
+    if (includeWbw) {
+      final translation =
+          _wbwService.getTranslation(word.surah, word.ayah, word.word);
+      final colorClass = isEven ? 'wbw-even' : 'wbw-odd';
+      if (translation != null && translation.isNotEmpty) {
+        buffer.write(
+            '<span class="wbw-text $colorClass">${_escapeHtml(translation)}</span>');
+      } else {
+        // Empty span to maintain layout if needed, or just skip
+        buffer.write('<span class="wbw-text $colorClass">&nbsp;</span>');
+      }
+      buffer.write('</div>');
+    }
+
+    buffer.write(' ');
     return buffer.toString();
   }
 
