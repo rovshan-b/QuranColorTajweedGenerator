@@ -1,0 +1,24 @@
+# Copilot Instructions for tajweed_to_pdf
+- Purpose: Flutter desktop app that generates HTML Mushaf pages with Tajweed coloring for browser-to-PDF printing; preview/generation flow lives in [lib/mushaf_preview_screen.dart](../lib/mushaf_preview_screen.dart).
+- App flow: [lib/main.dart](../lib/main.dart) boots MaterialApp -> MushafPreviewScreen; generation calls [lib/mushaf_db_initializer.dart](../lib/mushaf_db_initializer.dart) to copy bundled SQLite assets into app support dir, opens them via [lib/mushaf_db_reader.dart](../lib/mushaf_db_reader.dart), maps DB words to tajweed tokens with [lib/mushaf_word_mapper.dart](../lib/mushaf_word_mapper.dart), then renders HTML through [lib/mushaf_html_generator.dart](../lib/mushaf_html_generator.dart).
+- Assets: Requires `resources/qpc-v4-tajweed-15-lines.db` (page layout) and `resources/uthmani.db` (word text) plus fonts in `assets/fonts/`; these are declared in [pubspec.yaml](../pubspec.yaml) and must stay in that location for asset bundling.
+- Database init: `MushafDbInitializer.initialize()` always overwrites copies to ensure latest DBs; `MushafDbReader.open()` sets `databaseFactoryFfi` for desktop SQLite. Do not bypass these calls in new code or tests.
+- Word mapping: `MushafWordMapper.mapWordToTokens` throws if surah/ayah/word indexes fall outside `CachedTajweedTokens`; hizb markers are merged into neighboring words to keep counts aligned. Preserve this exception behavior for data integrity.
+- Tajweed tokens: Massive precomputed data lives in [lib/cached_tajweed_tokens.dart](../lib/cached_tajweed_tokens.dart); avoid hand-editing or regenerating unless you intentionally rebuild the tokenizer pipeline.
+- Color scheme: Rule-to-hex mapping is centralized in [lib/tajweed_color_mapper.dart](../lib/tajweed_color_mapper.dart); new rendering should reuse these helpers so CSS classes stay consistent.
+- Page layouts: Page size presets and margins (including RTL gutter rules) are defined in [lib/mushaf_page_config.dart](../lib/mushaf_page_config.dart); MushafHtmlGenerator relies on these for CSS sizes, legend spacing, and TOC entry counts.
+- HTML generation specifics: [lib/mushaf_html_generator.dart](../lib/mushaf_html_generator.dart) embeds Kitab fonts as base64, injects cover + blank page, renders per-page headers/body/legend, and appends a TOC; maintain font caching and gutter-specific page classes when altering layout.
+- Output: Generated HTML is saved to the user Documents directory with pattern `mushaf_<size>_pages_<start>_to_<end>_<timestamp>.html`; success status and folder open are surfaced in MushafPreviewScreen.
+- UI behavior: MushafPreviewScreen uses `SegmentedButton` for page size and text fields for page range; progress updates are driven by the generator callback. Keep UI responsive by toggling `_isGenerating` and `_statusMessage` during long runs.
+- Error handling: Generation intentionally fails fast on DB bounds mismatches or mapping inconsistencies; surface exceptions to the status area instead of swallowing them.
+- Printing expectations: CSS enforces `-webkit-print-color-adjust: exact` and alternates gutter margins between odd/even physical pages; preserve when tweaking styles to keep print-ready layout.
+- Testing: Minimal tests exist; prefer manual run of `flutter test` plus interactive `flutter run -d macos` for regression checks.
+- Desktop target: The app is desktop-first; keep sqflite_common_ffi initialization in any new entrypoints and avoid mobile-only plugins.
+- Build workflow: `flutter pub get` then `flutter run` (or `flutter run -d macos/windows/linux`); ensure assets are present before running to avoid initialization errors.
+- Performance note: CachedTajweedTokens is large; avoid loading or parsing it in isolates without need and lean on existing caching in MushafWordMapper.
+- When adding new tajweed rules or colors, update `TajweedRule` enum, `tajweedRuleToHex`, and CSS class naming `_tajweedRuleKey` so HTML class names remain aligned with the rule map.
+- Keep comments and strings RTL-friendly; HTML sets `dir="rtl"` and uses Kitab/Amiri fonts for legibility.
+- If generating alternative outputs (PDF, images), prefer reusing MushafHtmlGenerator output rather than duplicating SQL/token logic.
+- Do not change asset paths or font family names without updating both pubspec assets and MushafHtmlGenerator font-face definitions.
+- Large data safety: Any migration of DB schemas must keep columns used in MushafLine (page_number, line_number, line_type, first_word_id, last_word_id, surah_number) and MushafWord (id, location, surah, ayah, word, text) intact or provide mapping.
+- Use clear status messages and progress callbacks when adding long-running tasks to fit the existing UX pattern.
