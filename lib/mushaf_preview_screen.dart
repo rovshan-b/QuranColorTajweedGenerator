@@ -537,16 +537,19 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         _statusMessage = 'Generating HTML...';
       });
 
-      // Get selected translation name for cover page
+      // Get selected translation name and language for cover page and surah headers
       String? translationName;
+      String? translationLanguage;
       if (_includeTranslation && _selectedTranslationKey != null) {
         try {
           final info = _availableTranslations.firstWhere(
             (t) => t.key == _selectedTranslationKey,
           );
           translationName = '${info.name} (${info.language})';
+          translationLanguage = info.language.toLowerCase();
         } catch (_) {
           translationName = _selectedTranslationKey;
+          translationLanguage = 'en'; // fallback to English
         }
       }
 
@@ -562,6 +565,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
             : null,
         translationKey: _selectedTranslationKey,
         translationName: translationName,
+        translationLanguage: translationLanguage,
         translationService: _includeTranslation ? _translationService : null,
         localTranslationService:
             _includeTranslation ? _localTranslationService : null,

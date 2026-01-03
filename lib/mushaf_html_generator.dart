@@ -25,6 +25,7 @@ class MushafHtmlGenerator {
   final LocalTranslationService? localTranslationService;
   final String? translationKey;
   final String? translationName;
+  final String? translationLanguage;
   final String? wbwLanguageName;
 
   // Debug flag for translation stats - set to true to see char count and font size on each page
@@ -45,6 +46,7 @@ class MushafHtmlGenerator {
     this.localTranslationService,
     this.translationKey,
     this.translationName,
+    this.translationLanguage,
     this.wbwLanguageName,
   })  : margins = margins ?? pageSize.margins,
         _wordMapper = MushafWordMapper(),
@@ -138,6 +140,9 @@ class MushafHtmlGenerator {
   }
 
   String _generateHtmlHeader() {
+    final lang = translationLanguage ?? 'en';
+    final nobleQuran = getLocalizedText('noble_quran', lang);
+
     double arabicScale = 1.0;
     if (includeTranslation) {
       arabicScale *= pageSize.translationArabicScale;
@@ -166,7 +171,7 @@ class MushafHtmlGenerator {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quran Mushaf with Tajweed</title>
+  <title>$nobleQuran</title>
   <style>
     @font-face {
       font-family: 'Kitab';
@@ -257,6 +262,7 @@ class MushafHtmlGenerator {
       margin: 0;
       position: relative;
       background: transparent;
+      direction: ltr;
     }
     
     .page-header {
@@ -437,6 +443,8 @@ class MushafHtmlGenerator {
     .translation-wrapper {
       display: block;
       line-height: ${pageSize.translationLineHeight};
+      /*text-align: justify;*/
+      text-justify: inter-word;
     }
 
     .translation-line {
@@ -444,8 +452,10 @@ class MushafHtmlGenerator {
       line-height: inherit;
       color: #333;
       direction: ltr;
-      text-align: left;
+      /*text-align: justify;*/
+      text-justify: inter-word;
       word-break: break-word;
+      hyphens: auto;
       margin-bottom: 4px;
     }
 
@@ -464,6 +474,17 @@ class MushafHtmlGenerator {
       font-weight: 600;
       margin-right: 6px;
       color: #666;
+    }
+
+    .translation-surah-header {
+      display: block;
+      font-weight: 700;
+      font-size: 1.15em;
+      color: #2d5a3d;
+      margin-top: 8px;
+      margin-bottom: 6px;
+      padding-bottom: 3px;
+      text-align: center;
     }
 
     .translation-text {
@@ -566,21 +587,27 @@ class MushafHtmlGenerator {
   }
 
   String _generateCoverPage() {
+    final lang = translationLanguage ?? 'en';
+    final nobleQuran = getLocalizedText('noble_quran', lang);
+    final tajweedCoding = getLocalizedText('tajweed_coding', lang);
+    final translationLabel = getLocalizedText('translation', lang);
+    final wbwLabel = getLocalizedText('word_by_word', lang);
+
     final translationInfo = (includeTranslation && translationName != null)
-        ? '<div class="cover-footer">Translation: $translationName</div>'
+        ? '<div class="cover-footer">$translationLabel: $translationName</div>'
         : '';
     final wbwInfo = (includeWbw && wbwLanguageName != null)
-        ? '<div class="cover-footer">Word-by-Word: $wbwLanguageName</div>'
+        ? '<div class="cover-footer">$wbwLabel: $wbwLanguageName</div>'
         : '';
 
     return '''
 <div class="cover">
   <div class="cover-ornament">❁ ❁ ❁</div>
   <div class="cover-title">ٱلْقُرْآنُ ٱلْكَرِيمُ</div>
-  <div class="cover-subtitle">The Noble Quran</div>
+  <div class="cover-subtitle">$nobleQuran</div>
   <div class="cover-basmallah">بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ</div>
   <div class="cover-ornament">❁ ❁ ❁</div>
-  <div class="cover-footer">With Tajweed Color Coding</div>
+  <div class="cover-footer">$tajweedCoding</div>
   $translationInfo
   $wbwInfo
 </div>
@@ -588,13 +615,15 @@ class MushafHtmlGenerator {
   }
 
   String _generateEmptyPage({required int physicalPageNumber}) {
+    final lang = translationLanguage ?? 'en';
+    final blankPageText = getLocalizedText('blank_page_text', lang);
     final pageClass = physicalPageNumber.isOdd ? 'page-odd' : 'page-even';
     return '''
 <div class="page $pageClass">
   <div class="page-content" style="display: flex; justify-content: center; align-items: center; height: 100%;">
     <div style="text-align: center; color: #bbb; font-family: sans-serif; font-size: 14px;">
       <p dir="rtl" style="margin-bottom: 8px;">هذه الصفحة تركت فارغة عمداً</p>
-      <p dir="ltr">This page is intentionally left blank</p>
+      <p dir="ltr">$blankPageText</p>
     </div>
   </div>
 </div>''';
@@ -718,23 +747,23 @@ class MushafHtmlGenerator {
     }
 
     buffer.writeln('</div>'); // close page-content
-    buffer.writeln(_generateLegend());
+    buffer.writeln(_generateLegend(translationLanguage ?? 'en'));
     buffer.writeln('</div>'); // close page
     return buffer.toString();
   }
 
-  String _generateLegend() {
-    // Define legend entries with their corresponding TajweedRule and display label
+  String _generateLegend(String lang) {
+    // Define legend entries with their corresponding TajweedRule and display label key
     final legendEntries = [
-      {'rule': TajweedRule.LAFZATULLAH, 'label': 'LAFZATULLAH'},
-      {'rule': TajweedRule.izhar, 'label': 'Izhar'},
-      {'rule': TajweedRule.ikhfaa, 'label': 'Ikhfaa'},
-      {'rule': TajweedRule.idghamWithGhunna, 'label': 'Idgham + Ghunna'},
-      {'rule': TajweedRule.idghamWithoutGhunna, 'label': 'Idgham'},
-      {'rule': TajweedRule.iqlab, 'label': 'Iqlab'},
-      {'rule': TajweedRule.qalqala, 'label': 'Qalqala'},
-      {'rule': TajweedRule.ghunna, 'label': 'Ghunna'},
-      {'rule': TajweedRule.prolonging, 'label': 'Madd'},
+      {'rule': TajweedRule.LAFZATULLAH, 'key': 'rule_lafzatullah'},
+      {'rule': TajweedRule.izhar, 'key': 'rule_izhar'},
+      {'rule': TajweedRule.ikhfaa, 'key': 'rule_ikhfaa'},
+      {'rule': TajweedRule.idghamWithGhunna, 'key': 'rule_idgham_ghunna'},
+      {'rule': TajweedRule.idghamWithoutGhunna, 'key': 'rule_idgham'},
+      {'rule': TajweedRule.iqlab, 'key': 'rule_iqlab'},
+      {'rule': TajweedRule.qalqala, 'key': 'rule_qalqala'},
+      {'rule': TajweedRule.ghunna, 'key': 'rule_ghunna'},
+      {'rule': TajweedRule.prolonging, 'key': 'rule_madd'},
     ];
 
     final buffer = StringBuffer();
@@ -742,7 +771,8 @@ class MushafHtmlGenerator {
 
     for (final entry in legendEntries) {
       final rule = entry['rule'] as TajweedRule;
-      final label = entry['label'] as String;
+      final key = entry['key'] as String;
+      final label = getLocalizedText(key, lang);
       final color = tajweedRuleToHex(rule);
 
       buffer.writeln('  <div class="legend-item">');
@@ -830,8 +860,19 @@ class MushafHtmlGenerator {
     int? lastSurah;
     for (final pair in ayahOrder) {
       final surah = pair.key;
-      if (lastSurah != null && lastSurah != surah) {
-        buffer.writeln('<div class="translation-separator"></div>');
+      final ayah = pair.value;
+
+      // Insert Surah header ONLY if it's the first ayah of the surah
+      if (ayah == 1) {
+        if (lastSurah != null && lastSurah != surah) {
+          buffer.writeln('<div class="translation-separator"></div>');
+        }
+
+        // Add translated Surah name header
+        final languageCode = translationLanguage ?? 'en';
+        final translatedName = getTranslatedSurahName(surah, languageCode);
+        buffer.writeln(
+            '<div class="translation-surah-header">$translatedName</div>');
       }
       lastSurah = surah;
 
@@ -875,10 +916,13 @@ class MushafHtmlGenerator {
 
     // Build ordered list for 1..114
     final entries = <Map<String, dynamic>>[];
+    final lang = translationLanguage ?? 'en';
+
     for (int s = 1; s <= surahNames.length; s++) {
+      final translatedName = getTranslatedSurahName(s, lang);
       entries.add({
         'surah': s,
-        'name': surahNames[s - 1],
+        'name': translatedName,
         'page': surahPageMap[s] ?? '-',
       });
     }
@@ -886,6 +930,8 @@ class MushafHtmlGenerator {
     int entriesPerPage = pageSize.tocEntriesPerPage;
 
     final pages = <String>[];
+    final tocTitle = getLocalizedText('toc_title', lang);
+
     for (int i = 0; i < entries.length; i += entriesPerPage) {
       final chunk =
           entries.sublist(i, (i + entriesPerPage).clamp(0, entries.length));
@@ -908,7 +954,7 @@ class MushafHtmlGenerator {
       buffer.writeln(
           '<div style="padding:12px; font-family: sans-serif; width: 100%;">');
       buffer.writeln(
-          '<h3 style="text-align:center; margin-bottom: 20px;">فهرس السور — Table of Contents</h3>');
+          '<h3 style="text-align:center; margin-bottom: 20px;">فهرس السور — $tocTitle</h3>');
       buffer.writeln('<div style="margin-top:14px; width: 100%;">');
 
       for (final e in chunk) {
@@ -918,14 +964,14 @@ class MushafHtmlGenerator {
         if (page is int) {
           buffer.writeln(
               '<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:${pageSize.tocFontSize}px; border-bottom: 1px dotted #eee;">'
-              '<a href="#page-${page}" style="text-decoration:none; color:inherit; flex: 1; text-align:right;">${surahNum}. سورة ${name}</a>'
-              '<a href="#page-${page}" style="text-decoration:none; color:inherit; width: 60px; text-align:left;">${page}</a>'
+              '<a href="#page-${page}" style="text-decoration:none; color:inherit; flex: 1; text-align:left;">${surahNum}. ${name}</a>'
+              '<a href="#page-${page}" style="text-decoration:none; color:inherit; width: 60px; text-align:right;">${page}</a>'
               '</div>');
         } else {
           buffer.writeln(
               '<div style="display:flex; justify-content:space-between; padding:6px 0; font-size:${pageSize.tocFontSize}px; border-bottom: 1px dotted #eee;">'
-              '<span style="direction:rtl; flex: 1; text-align:right;">${surahNum}. سورة ${name}</span>'
-              '<span style="direction:ltr; width: 60px; text-align:left;">${page}</span>'
+              '<span style="flex: 1; text-align:left;">${surahNum}. ${name}</span>'
+              '<span style="width: 60px; text-align:right;">${page}</span>'
               '</div>');
         }
       }

@@ -19,7 +19,8 @@ class LocalTranslationService {
         return TranslationInfo(
           key: 'local:${item['file']}',
           name: item['name'] as String,
-          language: item['language'] as String,
+          language: item['language_iso_code'] as String? ??
+              item['language'] as String,
         );
       }).toList();
     } catch (e) {
