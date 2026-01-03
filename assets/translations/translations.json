@@ -1,7 +1,12 @@
 [
   {
     "file": "abdullah-basamia-simple.db",
-    "name": "Abdullah Basamia (Simple)",
+    "name": "Malay - Abdullah Basamia (Simple)",
     "language": "Malay"
+  },
+  {
+    "file": "az.musayev.db",
+    "name": "Azerbaijani - Alikhan Musayev (2010)",
+    "language": "Azerbaijani"
   }
 ]

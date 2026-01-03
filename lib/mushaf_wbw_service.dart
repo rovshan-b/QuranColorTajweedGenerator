@@ -6,27 +6,32 @@ class MushafWbwService {
   final Map<String, String> _wbwCache = {};
   bool _isLoaded = false;
 
-  /// Available languages in the CSV
-  static const List<String> availableLanguages = [
-    'bn',
-    'in',
-    'en',
-    'fr',
-    'zh',
-    'ur',
-    'ta',
-    'tr',
-    'dv',
-    'en_trans',
-    'de',
-    'hi',
-    'inh',
-    'ml',
-    'ru',
-    'fa',
-    'sd',
-    'sq'
-  ];
+  /// Fetches available languages from the CSV header.
+  /// The first 3 columns are assumed to be metadata (sura, ayah, word).
+  static Future<List<String>> fetchAvailableLanguages() async {
+    try {
+      final csvData = await rootBundle.loadString('assets/words/wbw-words.csv');
+      if (csvData.isEmpty) return [];
+
+      // Split by lines and take the first non-empty line as header
+      final lines = csvData.split(RegExp(r'\r?\n'));
+      if (lines.isEmpty) return [];
+
+      final header = lines.first.split(',');
+
+      if (header.length <= 3) return [];
+
+      // Return all columns after the first 3 (sura, ayah, word)
+      return header
+          .sublist(3)
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    } catch (e) {
+      // If file is missing or other error, return empty list
+      return [];
+    }
+  }
 
   /// Mapping of language codes to full names
   static const Map<String, String> languageNames = {
@@ -59,16 +64,19 @@ class MushafWbwService {
   Future<void> load(String languageCode) async {
     if (_isLoaded) _wbwCache.clear();
 
-    final csvData = await rootBundle.loadString('assets/words/words.csv');
-    final lines = csvData.split('\n');
+    final csvData = await rootBundle.loadString('assets/words/wbw-words.csv');
+    final lines =
+        csvData.split(RegExp(r'\r?\n')).where((l) => l.isNotEmpty).toList();
 
     if (lines.isEmpty) return;
 
     // Parse header to find language index
-    final header = lines[0].split(',');
+    final header = lines[0].split(',').map((e) => e.trim()).toList();
     final langIndex = header.indexOf(languageCode);
-    if (langIndex == -1)
-      throw Exception('Language $languageCode not found in CSV');
+    if (langIndex == -1) {
+      throw Exception(
+          'Language $languageCode not found in CSV. Available: ${header.sublist(3)}');
+    }
 
     for (int i = 1; i < lines.length; i++) {
       final line = lines[i].trim();

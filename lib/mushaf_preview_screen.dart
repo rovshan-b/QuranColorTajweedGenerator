@@ -36,6 +36,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   // Word-by-word controls
   bool _includeWbw = false;
   String _selectedWbwLanguage = 'en';
+  List<String> _availableWbwLanguages = [];
 
   // Page range for generation
   int _startPage = 1;
@@ -55,7 +56,27 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
 
   Future<void> _initAndLoad() async {
     await MushafDbInitializer.initialize();
-    await _loadTranslations();
+    await Future.wait([
+      _loadTranslations(),
+      _loadWbwLanguages(),
+    ]);
+  }
+
+  Future<void> _loadWbwLanguages() async {
+    try {
+      final langs = await MushafWbwService.fetchAvailableLanguages();
+      if (mounted) {
+        setState(() {
+          _availableWbwLanguages = langs;
+          // If current selection is not in the new list, reset to first available
+          if (langs.isNotEmpty && !langs.contains(_selectedWbwLanguage)) {
+            _selectedWbwLanguage = langs.contains('en') ? 'en' : langs.first;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading WBW languages: $e');
+    }
   }
 
   Future<void> _loadTranslations() async {
@@ -255,29 +276,38 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                     ),
                     if (_includeWbw) ...[
                       const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: _selectedWbwLanguage,
-                        decoration: const InputDecoration(
-                          labelText: 'WBW Language',
-                          border: OutlineInputBorder(),
+                      if (_availableWbwLanguages.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Text(
+                            'No WBW languages found in CSV.',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        )
+                      else
+                        DropdownButtonFormField<String>(
+                          value: _selectedWbwLanguage,
+                          decoration: const InputDecoration(
+                            labelText: 'WBW Language',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _availableWbwLanguages
+                              .map(
+                                (lang) => DropdownMenuItem(
+                                  value: lang,
+                                  child: Text(
+                                      MushafWbwService.getLanguageName(lang)),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedWbwLanguage = val;
+                              });
+                            }
+                          },
                         ),
-                        items: MushafWbwService.availableLanguages
-                            .map(
-                              (lang) => DropdownMenuItem(
-                                value: lang,
-                                child: Text(
-                                    MushafWbwService.getLanguageName(lang)),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            setState(() {
-                              _selectedWbwLanguage = val;
-                            });
-                          }
-                        },
-                      ),
                     ],
                   ],
                 ),

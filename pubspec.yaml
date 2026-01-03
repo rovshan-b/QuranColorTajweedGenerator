@@ -71,7 +71,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/metadata/Quran/quran-uthmani-kitab.txt
-    - assets/words/words.csv
+    - assets/words/wbw-words.csv
     - resources/qpc-v4-tajweed-15-lines.db
     - resources/uthmani.db
     - assets/translations/
