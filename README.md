@@ -2,6 +2,12 @@
 
 A Flutter desktop application designed to generate high-quality, print-ready HTML files of the Quran Mushaf with Tajweed color coding. The generated HTML is optimized for conversion to PDF using browser print functionality, supporting various page sizes and translation options.
 
+## Screenshots
+
+|                     Application UI                     |                       Generated Page Result                       |
+| :----------------------------------------------------: | :---------------------------------------------------------------: |
+| <img src="screenshots/app-screenshot.png" width="400"> | <img src="screenshots/generated-page-screenshot.png" width="400"> |
+
 > **Note**: The core HTML generation logic and CSS layout strategies in this project were primarily developed using AI models.
 
 ## ⚠️ Disclaimer & User Responsibility
