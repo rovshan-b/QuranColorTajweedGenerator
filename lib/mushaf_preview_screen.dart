@@ -42,7 +42,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
 
   // Page range for generation
   int _startPage = 1;
-  int _endPage = 5;
+  int _endPage = 604;
   int _previewPage = 1;
 
   // Page size selection
@@ -203,6 +203,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     required ValueChanged<num> onChanged,
     bool isDecimal = false,
     String? helpText,
+    bool enabled = true,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -210,6 +211,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         label: label,
         value: value,
         isDecimal: isDecimal,
+        enabled: enabled,
         onChanged: (v) {
           onChanged(v);
           _saveSettings();
@@ -299,189 +301,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Page range selection
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Page Range',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildNumberInput(
-                            label: 'Start Page',
-                            value: _startPage,
-                            helpText:
-                                'The first page of the Quran to include in the generated HTML.',
-                            onChanged: (v) => _startPage = v.toInt(),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildNumberInput(
-                            label: 'End Page',
-                            value: _endPage,
-                            helpText:
-                                'The last page of the Quran to include in the generated HTML.',
-                            onChanged: (v) => _endPage = v.toInt(),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildNumberInput(
-                            label: 'Preview Page',
-                            value: _previewPage,
-                            helpText:
-                                'The specific page to show when clicking the Preview button.',
-                            onChanged: (v) => _previewPage = v.toInt(),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        ElevatedButton.icon(
-                          onPressed: _isGenerating
-                              ? null
-                              : () => _generateHtml(isPreview: true),
-                          icon: const Icon(Icons.remove_red_eye),
-                          label: const Text('Preview'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Quran Mushaf has 604 pages total',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Translation toggle and selection
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Translation',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    SwitchListTile(
-                      title: const Text('Include translation (outer column)'),
-                      value: _includeTranslation,
-                      onChanged: (val) {
-                        setState(() {
-                          _includeTranslation = val;
-                          if (_includeTranslation &&
-                              _selectedTranslationKey == null) {
-                            _selectedTranslationKey =
-                                _availableTranslations.isNotEmpty
-                                    ? _availableTranslations.first.key
-                                    : 'english_saheeh';
-                          }
-                        });
-                      },
-                    ),
-                    if (_includeTranslation) ...[
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: _selectedTranslationKey,
-                        decoration: const InputDecoration(
-                          labelText: 'Translation source',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _availableTranslations
-                            .map(
-                              (t) => DropdownMenuItem(
-                                value: t.key,
-                                child: Text('${t.name} (${t.language})'),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (val) {
-                          setState(() {
-                            _selectedTranslationKey = val;
-                          });
-                        },
-                      ),
-                      if (_availableTranslations.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            'No translations fetched; using fallback if available.',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                    ],
-                    const Divider(height: 32),
-                    Text(
-                      'Word-by-Word',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 8),
-                    SwitchListTile(
-                      title: const Text('Include word-by-word translation'),
-                      subtitle: const Text(
-                          'Displays translation under each Arabic word'),
-                      value: _includeWbw,
-                      onChanged: (val) {
-                        setState(() {
-                          _includeWbw = val;
-                        });
-                      },
-                    ),
-                    if (_includeWbw) ...[
-                      const SizedBox(height: 8),
-                      if (_availableWbwLanguages.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Text(
-                            'No WBW languages found in CSV.',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        )
-                      else
-                        DropdownButtonFormField<String>(
-                          value: _selectedWbwLanguage,
-                          decoration: const InputDecoration(
-                            labelText: 'WBW Language',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: _availableWbwLanguages
-                              .map(
-                                (lang) => DropdownMenuItem(
-                                  value: lang,
-                                  child: Text(
-                                      MushafWbwService.getLanguageName(lang)),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (val) {
-                            if (val != null) {
-                              setState(() {
-                                _selectedWbwLanguage = val;
-                              });
-                            }
-                          },
-                        ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+            // Page range selection moved to bottom
             const SizedBox(height: 16),
 
             // Page size selection
@@ -723,6 +543,55 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                       ],
                     ),
                     const Divider(),
+                    SwitchListTile(
+                      title: const Text('Include translation (outer column)'),
+                      value: _includeTranslation,
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (val) {
+                        setState(() {
+                          _includeTranslation = val;
+                          if (_includeTranslation &&
+                              _selectedTranslationKey == null) {
+                            _selectedTranslationKey =
+                                _availableTranslations.isNotEmpty
+                                    ? _availableTranslations.first.key
+                                    : 'english_saheeh';
+                          }
+                        });
+                      },
+                    ),
+                    if (_includeTranslation) ...[
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: _selectedTranslationKey,
+                        decoration: const InputDecoration(
+                          labelText: 'Translation source',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _availableTranslations
+                            .map(
+                              (t) => DropdownMenuItem(
+                                value: t.key,
+                                child: Text('${t.name} (${t.language})'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedTranslationKey = val;
+                          });
+                        },
+                      ),
+                      if (_availableTranslations.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            'No translations fetched; using fallback if available.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                    ],
                     const Text('Translation Column',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     Row(
@@ -733,6 +602,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 value: _selectedPageSize
                                     .translationWidthFraction,
                                 isDecimal: true,
+                                enabled: _includeTranslation,
                                 helpText:
                                     'Percentage of page width allocated to the translation column.',
                                 onChanged: (v) => setState(() =>
@@ -746,6 +616,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Arabic Scale',
                                 value: _selectedPageSize.translationArabicScale,
                                 isDecimal: true,
+                                enabled: _includeTranslation,
                                 helpText:
                                     'How much to shrink the Arabic text when translation is enabled.',
                                 onChanged: (v) => setState(() =>
@@ -758,6 +629,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Font Size (px)',
                                 value: _selectedPageSize.translationFontSize,
+                                enabled: _includeTranslation,
                                 helpText:
                                     'Size of the translation text in pixels.',
                                 onChanged: (v) => setState(() =>
@@ -773,6 +645,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Line Height',
                                 value: _selectedPageSize.translationLineHeight,
                                 isDecimal: true,
+                                enabled: _includeTranslation,
                                 helpText:
                                     'Spacing between lines of translation text.',
                                 onChanged: (v) => setState(() =>
@@ -786,6 +659,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Compact Threshold',
                                 value: _selectedPageSize
                                     .translationCompactThreshold,
+                                enabled: _includeTranslation,
                                 helpText:
                                     'Character count above which translation switches to inline mode.',
                                 onChanged: (v) => setState(() =>
@@ -796,6 +670,54 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                       ],
                     ),
                     const Divider(),
+                    SwitchListTile(
+                      title: const Text('Include word-by-word translation'),
+                      subtitle: const Text(
+                          'Displays translation under each Arabic word'),
+                      value: _includeWbw,
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (val) {
+                        setState(() {
+                          _includeWbw = val;
+                        });
+                      },
+                    ),
+                    if (_includeWbw) ...[
+                      const SizedBox(height: 8),
+                      if (_availableWbwLanguages.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Text(
+                            'No WBW languages found in CSV.',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        )
+                      else
+                        DropdownButtonFormField<String>(
+                          value: _selectedWbwLanguage,
+                          decoration: const InputDecoration(
+                            labelText: 'WBW Language',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: _availableWbwLanguages
+                              .map(
+                                (lang) => DropdownMenuItem(
+                                  value: lang,
+                                  child: Text(
+                                      MushafWbwService.getLanguageName(lang)),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedWbwLanguage = val;
+                              });
+                            }
+                          },
+                        ),
+                      const SizedBox(height: 16),
+                    ],
                     const Text('Word-by-Word',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     Row(
@@ -804,6 +726,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Font Size (px)',
                                 value: _selectedPageSize.wbwFontSize,
+                                enabled: _includeWbw,
                                 helpText:
                                     'Size of the word-by-word translation text in pixels.',
                                 onChanged: (v) => setState(() =>
@@ -815,6 +738,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Arabic Scale',
                                 value: _selectedPageSize.wbwArabicScale,
                                 isDecimal: true,
+                                enabled: _includeWbw,
                                 helpText:
                                     'How much to shrink the Arabic text when word-by-word translation is enabled.',
                                 onChanged: (v) => setState(() =>
@@ -827,6 +751,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Arabic Line Height',
                                 value: _selectedPageSize.wbwArabicLineHeight,
                                 isDecimal: true,
+                                enabled: _includeWbw,
                                 helpText:
                                     'Line height for the Arabic text when word-by-word translation is enabled.',
                                 onChanged: (v) => setState(() =>
@@ -844,6 +769,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 value: _selectedPageSize
                                     .wbwTranslationLineHeight,
                                 isDecimal: true,
+                                enabled: _includeWbw,
                                 helpText:
                                     'Line height for the word-by-word translation text.',
                                 onChanged: (v) => setState(() =>
@@ -857,6 +783,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Max Width (mm)',
                                 value: _selectedPageSize.wbwMaxWidthMm,
                                 isDecimal: true,
+                                enabled: _includeWbw,
                                 helpText:
                                     'Maximum width allowed for a single word-by-word block in millimeters.',
                                 onChanged: (v) => setState(() =>
@@ -956,6 +883,76 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
             ),
             const SizedBox(height: 16),
 
+            const SizedBox(height: 16),
+
+            // Page Range & Preview Controls
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Generation Controls',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    // Preview Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildNumberInput(
+                            label: 'Preview Page',
+                            value: _previewPage,
+                            helpText:
+                                'The specific page to show when clicking the Preview button.',
+                            onChanged: (v) => _previewPage = v.toInt(),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton.icon(
+                          onPressed: _isGenerating
+                              ? null
+                              : () => _generateHtml(isPreview: true),
+                          icon: const Icon(Icons.remove_red_eye),
+                          label: const Text('Preview'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Start/End Page Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildNumberInput(
+                            label: 'Start Page',
+                            value: _startPage,
+                            helpText:
+                                'The first page of the Quran to include in the generated HTML.',
+                            onChanged: (v) => _startPage = v.toInt(),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildNumberInput(
+                            label: 'End Page',
+                            value: _endPage,
+                            helpText:
+                                'The last page of the Quran to include in the generated HTML.',
+                            onChanged: (v) => _endPage = v.toInt(),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Quran Mushaf has 604 pages total',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
 
             // Generate button
@@ -1182,12 +1179,17 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
 
       // Save to documents directory
       final docsDir = await getApplicationDocumentsDirectory();
+      final mushafDir = Directory('${docsDir.path}/Mushafs');
+      if (!await mushafDir.exists()) {
+        await mushafDir.create(recursive: true);
+      }
+
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final prefix = isPreview
           ? 'preview_page_${start}'
           : 'mushaf_${_selectedPageSize.name}_pages_${start}_to_${end}';
       final fileName = '${prefix}_$timestamp.html';
-      final outputFile = File('${docsDir.path}/$fileName');
+      final outputFile = File('${mushafDir.path}/$fileName');
       await outputFile.writeAsString(html);
 
       setState(() {
@@ -1195,11 +1197,24 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         _statusMessage = 'Completed successfully!';
         _outputPath = outputFile.path;
       });
+
+      // Open the generated file in browser
+      _openFileInBrowser(outputFile.path);
     } catch (e) {
       setState(() {
         _isGenerating = false;
         _statusMessage = 'Error: $e';
       });
+    }
+  }
+
+  void _openFileInBrowser(String filePath) {
+    if (Platform.isMacOS) {
+      Process.run('open', [filePath]);
+    } else if (Platform.isWindows) {
+      Process.run('cmd', ['/c', 'start', '', filePath]);
+    } else if (Platform.isLinux) {
+      Process.run('xdg-open', [filePath]);
     }
   }
 
@@ -1246,6 +1261,7 @@ class _NumberInput extends StatefulWidget {
   final ValueChanged<num> onChanged;
   final bool isDecimal;
   final Widget? suffix;
+  final bool enabled;
 
   const _NumberInput({
     required this.label,
@@ -1253,6 +1269,7 @@ class _NumberInput extends StatefulWidget {
     required this.onChanged,
     this.isDecimal = false,
     this.suffix,
+    this.enabled = true,
   });
 
   @override
@@ -1292,6 +1309,7 @@ class _NumberInputState extends State<_NumberInput> {
   @override
   Widget build(BuildContext context) {
     return TextField(
+      enabled: widget.enabled,
       decoration: InputDecoration(
         labelText: widget.label,
         border: const OutlineInputBorder(),
