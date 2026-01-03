@@ -24,6 +24,11 @@ class MushafHtmlGenerator {
   final QuranEncTranslationService? translationService;
   final LocalTranslationService? localTranslationService;
   final String? translationKey;
+  final String? translationName;
+  final String? wbwLanguageName;
+
+  // Debug flag for translation stats - set to true to see char count and font size on each page
+  static const bool _debugTranslationStats = false;
 
   // Cached base64 encoded fonts
   String? _kitabRegularBase64;
@@ -39,6 +44,8 @@ class MushafHtmlGenerator {
     this.translationService,
     this.localTranslationService,
     this.translationKey,
+    this.translationName,
+    this.wbwLanguageName,
   })  : margins = margins ?? pageSize.margins,
         _wordMapper = MushafWordMapper(),
         _wbwService = MushafWbwService();
@@ -397,56 +404,59 @@ class MushafHtmlGenerator {
       color: #333;
     }
 
-    /* Two-pane body for translation mode */
+    /* Flow layout for translation mode */
     .page-body {
-      display: flex;
+      display: block;
       direction: ltr;
-      gap: ${(pageSize.paddingMm * 0.35).toStringAsFixed(1)}mm;
-      flex: 1;
-      align-items: stretch;
+      margin: auto 0;
     }
-    .page-odd .page-body { flex-direction: row; }
-    .page-even .page-body { flex-direction: row-reverse; }
 
     .pane-ar {
-      flex: ${(1 - pageSize.translationWidthFraction).toStringAsFixed(2)};
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
+      width: ${(1 - pageSize.translationWidthFraction) * 100}%;
       direction: rtl;
+      min-width: 0;
+      margin-bottom: 10px;
+    }
+    
+    .page-odd .pane-ar {
+      float: left;
+      margin-right: ${(pageSize.paddingMm * 0.35).toStringAsFixed(1)}mm;
+    }
+    
+    .page-even .pane-ar {
+      float: right;
+      margin-left: ${(pageSize.paddingMm * 0.35).toStringAsFixed(1)}mm;
     }
 
     .pane-tr {
-      flex: ${pageSize.translationWidthFraction.toStringAsFixed(2)};
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 8px;
-      padding: 8px 10px;
-      margin-bottom: ${(pageSize.paddingMm * 0.3).toStringAsFixed(1)}mm;
-      background: #f9f7ef;
-      border: 1px solid #e0ddcf;
-      border-radius: 8px;
+      padding: 0;
+      margin: 0;
       min-width: 0;
-      max-height: 100%;
-      overflow: hidden;
     }
 
     .translation-wrapper {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      max-height: 100%;
-      overflow: hidden;
+      display: block;
+      line-height: ${pageSize.translationLineHeight};
     }
 
     .translation-line {
-      font-size: ${pageSize.translationFontSize}px;
-      line-height: ${pageSize.translationLineHeight};
+      font-size: inherit;
+      line-height: inherit;
       color: #333;
       direction: ltr;
       text-align: left;
       word-break: break-word;
+      margin-bottom: 4px;
+    }
+
+    .translation-compact .translation-line {
+      display: inline;
+      margin-bottom: 0;
+      margin-right: 4px;
+    }
+    
+    .translation-compact .translation-line::after {
+      content: " ";
     }
 
     .translation-ayah {
@@ -463,7 +473,8 @@ class MushafHtmlGenerator {
     .translation-separator {
       border-top: 1px solid #d4d1c1;
       margin: 4px 0;
-      width: 100%;
+      display: block;
+      overflow: hidden; /* Ensures separator stays outside the floated Arabic block */
     }
     
     /* Cover page styles */
@@ -555,6 +566,13 @@ class MushafHtmlGenerator {
   }
 
   String _generateCoverPage() {
+    final translationInfo = (includeTranslation && translationName != null)
+        ? '<div class="cover-footer">Translation: $translationName</div>'
+        : '';
+    final wbwInfo = (includeWbw && wbwLanguageName != null)
+        ? '<div class="cover-footer">Word-by-Word: $wbwLanguageName</div>'
+        : '';
+
     return '''
 <div class="cover">
   <div class="cover-ornament">❁ ❁ ❁</div>
@@ -563,6 +581,8 @@ class MushafHtmlGenerator {
   <div class="cover-basmallah">بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ</div>
   <div class="cover-ornament">❁ ❁ ❁</div>
   <div class="cover-footer">With Tajweed Color Coding</div>
+  $translationInfo
+  $wbwInfo
 </div>
 ''';
   }
@@ -781,7 +801,32 @@ class MushafHtmlGenerator {
       }
     }
 
-    buffer.writeln('<div class="translation-wrapper">');
+    // Calculate total length to adjust font size dynamically
+    int totalLength = 0;
+    for (final text in translationLookup.values) {
+      totalLength += text.length;
+    }
+
+    final double fontSize =
+        pageSize.getAdjustedTranslationFontSize(totalLength);
+
+    // Use compact mode (inline verses) if text is long to save vertical space
+    final bool useCompactMode =
+        totalLength > pageSize.translationCompactThreshold;
+    final String wrapperClass = useCompactMode
+        ? 'translation-wrapper translation-compact'
+        : 'translation-wrapper';
+
+    buffer.writeln(
+        '<div class="$wrapperClass" style="font-size: ${fontSize.toStringAsFixed(1)}px;">');
+
+    if (_debugTranslationStats) {
+      buffer.writeln(
+          '<div style="font-size: 10px; color: red; margin-bottom: 5px; font-family: sans-serif; direction: ltr; text-align: left;">'
+          'DEBUG: Chars: $totalLength, Font: ${fontSize.toStringAsFixed(1)}px, Compact: $useCompactMode'
+          '</div>');
+    }
+
     int? lastSurah;
     for (final pair in ayahOrder) {
       final surah = pair.key;
@@ -791,9 +836,13 @@ class MushafHtmlGenerator {
       lastSurah = surah;
 
       final key = '${pair.key}:${pair.value}';
-      final text = translationLookup[key] ?? '—';
+      var text = translationLookup[key] ?? '—';
+
+      // Remove leading ayah numbers if they exist (e.g., "1. ", "1 ")
+      text = text.replaceFirst(RegExp(r'^\d+[\.\s]+'), '').trimLeft();
+
       buffer.writeln('<div class="translation-line">');
-      buffer.writeln('<span class="translation-ayah">${pair.value}</span>');
+      buffer.writeln('<span class="translation-ayah">${pair.value}. </span>');
       buffer.writeln(
           '<span class="translation-text">${_escapeHtml(text)}</span>');
       buffer.writeln('</div>');

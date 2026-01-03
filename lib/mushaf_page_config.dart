@@ -54,6 +54,7 @@ enum PageSize {
     wbwTranslationLineHeight: 1.1,
     wordSpacing: -0.35,
     tocEntriesPerPage: 27,
+    translationCompactThreshold: 3000,
     margins: BookMargins(
       gutterMm: 26.0,
       outerMm: 26.0,
@@ -87,6 +88,7 @@ enum PageSize {
     wbwTranslationLineHeight: 1.0,
     wordSpacing: -0.35,
     tocEntriesPerPage: 21,
+    translationCompactThreshold: 1600,
     margins: BookMargins(
       gutterMm: 26.0,
       outerMm: 26.0,
@@ -99,8 +101,8 @@ enum PageSize {
     widthMm: 176,
     heightMm: 250,
     fontSize: 20,
-    lineHeight: 1.8,
-    paddingMm: 14,
+    lineHeight: 1.4,
+    paddingMm: 12,
     surahFontSize: 32,
     ayaNumberFontSize: 24,
     legendFontSize: 8,
@@ -110,16 +112,17 @@ enum PageSize {
     legendPadding: 8,
     headerFontSize: 17,
     tocFontSize: 15,
-    translationFontSize: 8,
-    translationLineHeight: 1.00,
+    translationFontSize: 9,
+    translationLineHeight: 1.2,
     translationWidthFraction: 0.27,
     translationArabicScale: 0.85,
     wbwFontSize: 5,
     wbwArabicScale: 0.85,
     wbwArabicLineHeight: 1.3,
     wbwTranslationLineHeight: 1.0,
-    wordSpacing: -1.0,
+    wordSpacing: -0.3,
     tocEntriesPerPage: 19,
+    translationCompactThreshold: 1500,
     margins: BookMargins(
       gutterMm: 26.0,
       outerMm: 26.0,
@@ -153,6 +156,7 @@ enum PageSize {
     wbwTranslationLineHeight: 1.0,
     wordSpacing: -0.5,
     tocEntriesPerPage: 16,
+    translationCompactThreshold: 1000,
     margins: BookMargins(
       gutterMm: 26.0,
       outerMm: 26.0,
@@ -187,7 +191,8 @@ enum PageSize {
       required this.wbwTranslationLineHeight,
       required this.wordSpacing,
       required this.margins,
-      required this.tocEntriesPerPage});
+      required this.tocEntriesPerPage,
+      required this.translationCompactThreshold});
 
   /// Display name of the page size (e.g., 'A4').
   final String name;
@@ -266,4 +271,26 @@ enum PageSize {
 
   /// Number of Surah entries to display per page in the Table of Contents.
   final int tocEntriesPerPage;
+
+  /// Character count threshold to switch to compact translation mode.
+  final int translationCompactThreshold;
+
+  /// Calculates adjusted translation font size based on text length.
+  double getAdjustedTranslationFontSize(int totalLength) {
+    double size = translationFontSize.toDouble();
+
+    // Adjust based on character count
+    if (totalLength < 600) {
+      size += 2;
+    } else if (totalLength < 1200) {
+      size += 1;
+    } else if (totalLength > 2200) {
+      size -= 1;
+    } else if (totalLength > 3200) {
+      size -= 2;
+    }
+
+    // Ensure font doesn't get too small to read
+    return size < 7 ? 7 : size;
+  }
 }

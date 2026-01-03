@@ -235,48 +235,48 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
-                      const Divider(height: 32),
-                      Text(
-                        'Word-by-Word',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
+                    ],
+                    const Divider(height: 32),
+                    Text(
+                      'Word-by-Word',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      title: const Text('Include word-by-word translation'),
+                      subtitle: const Text(
+                          'Displays translation under each Arabic word'),
+                      value: _includeWbw,
+                      onChanged: (val) {
+                        setState(() {
+                          _includeWbw = val;
+                        });
+                      },
+                    ),
+                    if (_includeWbw) ...[
                       const SizedBox(height: 8),
-                      SwitchListTile(
-                        title: const Text('Include word-by-word translation'),
-                        subtitle: const Text(
-                            'Displays translation under each Arabic word'),
-                        value: _includeWbw,
+                      DropdownButtonFormField<String>(
+                        value: _selectedWbwLanguage,
+                        decoration: const InputDecoration(
+                          labelText: 'WBW Language',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: MushafWbwService.availableLanguages
+                            .map(
+                              (lang) => DropdownMenuItem(
+                                value: lang,
+                                child: Text(lang.toUpperCase()),
+                              ),
+                            )
+                            .toList(),
                         onChanged: (val) {
-                          setState(() {
-                            _includeWbw = val;
-                          });
+                          if (val != null) {
+                            setState(() {
+                              _selectedWbwLanguage = val;
+                            });
+                          }
                         },
                       ),
-                      if (_includeWbw) ...[
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          value: _selectedWbwLanguage,
-                          decoration: const InputDecoration(
-                            labelText: 'WBW Language',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: MushafWbwService.availableLanguages
-                              .map(
-                                (lang) => DropdownMenuItem(
-                                  value: lang,
-                                  child: Text(lang.toUpperCase()),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (val) {
-                            if (val != null) {
-                              setState(() {
-                                _selectedWbwLanguage = val;
-                              });
-                            }
-                          },
-                        ),
-                      ],
                     ],
                   ],
                 ),
@@ -506,6 +506,19 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         _statusMessage = 'Generating HTML...';
       });
 
+      // Get selected translation name for cover page
+      String? translationName;
+      if (_includeTranslation && _selectedTranslationKey != null) {
+        try {
+          final info = _availableTranslations.firstWhere(
+            (t) => t.key == _selectedTranslationKey,
+          );
+          translationName = '${info.name} (${info.language})';
+        } catch (_) {
+          translationName = _selectedTranslationKey;
+        }
+      }
+
       // Generate HTML using margins preset for selected PageSize
       final generator = MushafHtmlGenerator(
         dbReader,
@@ -513,7 +526,10 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         includeTranslation: _includeTranslation,
         includeWbw: _includeWbw,
         wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,
+        wbwLanguageName:
+            _includeWbw ? _selectedWbwLanguage.toUpperCase() : null,
         translationKey: _selectedTranslationKey,
+        translationName: translationName,
         translationService: _includeTranslation ? _translationService : null,
         localTranslationService:
             _includeTranslation ? _localTranslationService : null,
