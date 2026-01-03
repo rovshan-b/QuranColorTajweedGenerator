@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:tajweed/quran_enc_translation_service.dart';
+import 'quran_enc_translation_service.dart';
 
 /// Service for reading translations from local SQLite databases.
 class LocalTranslationService {

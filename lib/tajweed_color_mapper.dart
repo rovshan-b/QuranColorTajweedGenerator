@@ -1,4 +1,4 @@
-import 'package:tajweed/tajweed_rule.dart';
+import 'tajweed_rule.dart';
 
 /// Maps TajweedRule to CSS hex color strings for HTML generation.
 /// Uses light theme colors by default.

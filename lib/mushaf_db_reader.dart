@@ -1,5 +1,5 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:tajweed/mushaf_db_initializer.dart';
+import 'mushaf_db_initializer.dart';
 
 /// Represents a line in the Mushaf page layout
 class MushafLine {

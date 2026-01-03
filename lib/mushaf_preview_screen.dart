@@ -1,13 +1,15 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:tajweed/mushaf_db_initializer.dart';
-import 'package:tajweed/mushaf_db_reader.dart';
-import 'package:tajweed/mushaf_html_generator.dart';
-import 'package:tajweed/mushaf_page_config.dart';
-import 'package:tajweed/quran_enc_translation_service.dart';
-import 'package:tajweed/mushaf_wbw_service.dart';
-import 'package:tajweed/local_translation_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'mushaf_db_initializer.dart';
+import 'mushaf_db_reader.dart';
+import 'mushaf_html_generator.dart';
+import 'mushaf_page_config.dart';
+import 'quran_enc_translation_service.dart';
+import 'mushaf_wbw_service.dart';
+import 'local_translation_service.dart';
 
 /// Screen for generating Mushaf HTML with Tajweed coloring
 class MushafPreviewScreen extends StatefulWidget {
@@ -41,12 +43,12 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   // Page range for generation
   int _startPage = 1;
   int _endPage = 5;
+  int _previewPage = 1;
 
   // Page size selection
   PageSize _selectedPageSize = PageSize.a4;
-
-  // Book margin controllers with default values
-  // Margins are now fixed per PageSize presets; UI controls removed
+  List<PageSize> _customPresets = [];
+  late SharedPreferences _prefs;
 
   @override
   void initState() {
@@ -55,11 +57,148 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   }
 
   Future<void> _initAndLoad() async {
+    _prefs = await SharedPreferences.getInstance();
+    _loadSavedSettings();
     await MushafDbInitializer.initialize();
     await Future.wait([
       _loadTranslations(),
       _loadWbwLanguages(),
     ]);
+  }
+
+  void _loadSavedSettings() {
+    final savedPageSizeJson = _prefs.getString('selected_page_size');
+    if (savedPageSizeJson != null) {
+      try {
+        setState(() {
+          _selectedPageSize = PageSize.fromJson(json.decode(savedPageSizeJson));
+        });
+      } catch (e) {
+        debugPrint('Error loading saved page size: $e');
+      }
+    }
+
+    final savedCustomPresetsJson = _prefs.getStringList('custom_presets');
+    if (savedCustomPresetsJson != null) {
+      try {
+        setState(() {
+          _customPresets = savedCustomPresetsJson
+              .map((j) => PageSize.fromJson(json.decode(j)))
+              .toList();
+        });
+      } catch (e) {
+        debugPrint('Error loading custom presets: $e');
+      }
+    }
+
+    _startPage = _prefs.getInt('start_page') ?? 1;
+    _endPage = _prefs.getInt('end_page') ?? 5;
+    _previewPage = _prefs.getInt('preview_page') ?? 1;
+    _includeTranslation = _prefs.getBool('include_translation') ?? false;
+    _includeWbw = _prefs.getBool('include_wbw') ?? false;
+    _selectedWbwLanguage = _prefs.getString('wbw_language') ?? 'en';
+    _selectedTranslationKey = _prefs.getString('translation_key');
+  }
+
+  Future<void> _saveSettings() async {
+    await _prefs.setString(
+        'selected_page_size', json.encode(_selectedPageSize.toJson()));
+    await _prefs.setStringList('custom_presets',
+        _customPresets.map((p) => json.encode(p.toJson())).toList());
+    await _prefs.setInt('start_page', _startPage);
+    await _prefs.setInt('end_page', _endPage);
+    await _prefs.setInt('preview_page', _previewPage);
+    await _prefs.setBool('include_translation', _includeTranslation);
+    await _prefs.setBool('include_wbw', _includeWbw);
+    await _prefs.setString('wbw_language', _selectedWbwLanguage);
+    if (_selectedTranslationKey != null) {
+      await _prefs.setString('translation_key', _selectedTranslationKey!);
+    }
+  }
+
+  Future<void> _showSavePresetDialog() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Save as Preset'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Preset Name',
+            hintText: 'e.g. My Custom A4',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (name != null && name.isNotEmpty) {
+      setState(() {
+        final newPreset = _selectedPageSize.copyWith(name: name);
+        _customPresets.add(newPreset);
+        _selectedPageSize = newPreset;
+      });
+      await _saveSettings();
+    }
+  }
+
+  Future<void> _deletePreset(PageSize preset) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Preset'),
+        content: Text('Are you sure you want to delete "${preset.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _customPresets.removeWhere((p) => p.name == preset.name);
+      });
+      await _saveSettings();
+    }
+  }
+
+  Widget _buildNumberInput({
+    required String label,
+    required num value,
+    required ValueChanged<num> onChanged,
+    bool isDecimal = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: _NumberInput(
+        label: label,
+        value: value,
+        isDecimal: isDecimal,
+        onChanged: (v) {
+          onChanged(v);
+          _saveSettings();
+        },
+      ),
+    );
   }
 
   Future<void> _loadWbwLanguages() async {
@@ -149,41 +288,39 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: TextField(
-                            decoration: const InputDecoration(
-                              labelText: 'Start Page',
-                              border: OutlineInputBorder(),
-                            ),
-                            keyboardType: TextInputType.number,
-                            controller: TextEditingController(
-                              text: _startPage.toString(),
-                            ),
-                            onChanged: (value) {
-                              final parsed = int.tryParse(value);
-                              if (parsed != null && parsed > 0) {
-                                _startPage = parsed;
-                              }
-                            },
+                          child: _buildNumberInput(
+                            label: 'Start Page',
+                            value: _startPage,
+                            onChanged: (v) => _startPage = v.toInt(),
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: TextField(
-                            decoration: const InputDecoration(
-                              labelText: 'End Page',
-                              border: OutlineInputBorder(),
-                            ),
-                            keyboardType: TextInputType.number,
-                            controller: TextEditingController(
-                              text: _endPage.toString(),
-                            ),
-                            onChanged: (value) {
-                              final parsed = int.tryParse(value);
-                              if (parsed != null && parsed > 0) {
-                                _endPage = parsed;
-                              }
-                            },
+                          child: _buildNumberInput(
+                            label: 'End Page',
+                            value: _endPage,
+                            onChanged: (v) => _endPage = v.toInt(),
                           ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildNumberInput(
+                            label: 'Preview Page',
+                            value: _previewPage,
+                            onChanged: (v) => _previewPage = v.toInt(),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton.icon(
+                          onPressed: _isGenerating
+                              ? null
+                              : () => _generateHtml(isPreview: true),
+                          icon: const Icon(Icons.remove_red_eye),
+                          label: const Text('Preview'),
                         ),
                       ],
                     ),
@@ -322,45 +459,408 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Page Size',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    SegmentedButton<PageSize>(
-                      segments: const [
-                        ButtonSegment(
-                          value: PageSize.a3,
-                          label: Text('A3'),
-                          icon: Icon(Icons.crop_landscape),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Layout & Typography',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        ButtonSegment(
-                          value: PageSize.a4,
-                          label: Text('A4'),
-                          icon: Icon(Icons.description),
-                        ),
-                        ButtonSegment(
-                          value: PageSize.b5,
-                          label: Text('B5'),
-                          icon: Icon(Icons.menu_book),
-                        ),
-                        ButtonSegment(
-                          value: PageSize.a5,
-                          label: Text('A5'),
-                          icon: Icon(Icons.crop_portrait),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextButton.icon(
+                              onPressed: _showSavePresetDialog,
+                              icon: const Icon(Icons.save_alt),
+                              label: const Text('Save as Preset'),
+                            ),
+                            const SizedBox(width: 8),
+                            PopupMenuButton<PageSize>(
+                              onSelected: (preset) {
+                                setState(() {
+                                  _selectedPageSize = preset;
+                                  _saveSettings();
+                                });
+                              },
+                              itemBuilder: (context) => [
+                                ...PageSize.presets
+                                    .map((p) => PopupMenuItem<PageSize>(
+                                          value: p,
+                                          child: Text('Load ${p.name} Preset'),
+                                        )),
+                                if (_customPresets.isNotEmpty) ...[
+                                  const PopupMenuDivider(),
+                                  ..._customPresets.map((p) =>
+                                      PopupMenuItem<PageSize>(
+                                        value: p,
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                                child:
+                                                    Text('Custom: ${p.name}')),
+                                            IconButton(
+                                              icon: const Icon(
+                                                  Icons.delete_outline,
+                                                  size: 18,
+                                                  color: Colors.red),
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                                _deletePreset(p);
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      )),
+                                ],
+                              ],
+                              child: const Chip(
+                                label: Text('Load Preset'),
+                                avatar: Icon(Icons.settings_backup_restore,
+                                    size: 18),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
-                      selected: {_selectedPageSize},
-                      onSelectionChanged: (Set<PageSize> selection) {
-                        setState(() {
-                          _selectedPageSize = selection.first;
-                        });
-                      },
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${_selectedPageSize.name}: ${_selectedPageSize.widthMm}mm × ${_selectedPageSize.heightMm}mm, Font: ${_selectedPageSize.fontSize}px',
-                      style: Theme.of(context).textTheme.bodySmall,
+                    const SizedBox(height: 16),
+                    const Text('Page Dimensions',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Width (mm)',
+                                value: _selectedPageSize.widthMm,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(widthMm: v.toInt())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Height (mm)',
+                                value: _selectedPageSize.heightMm,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(heightMm: v.toInt())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Padding (mm)',
+                                value: _selectedPageSize.paddingMm,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(paddingMm: v.toInt())))),
+                      ],
+                    ),
+                    const Divider(),
+                    const Text('Arabic Typography',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Font Size (px)',
+                                value: _selectedPageSize.fontSize,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(fontSize: v.toInt())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Line Height',
+                                value: _selectedPageSize.lineHeight,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(lineHeight: v.toDouble())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Word Spacing',
+                                value: _selectedPageSize.wordSpacing,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(wordSpacing: v.toDouble())))),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Surah Header (px)',
+                                value: _selectedPageSize.surahFontSize,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(surahFontSize: v.toInt())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Ayah Number (px)',
+                                value: _selectedPageSize.ayaNumberFontSize,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            ayaNumberFontSize: v.toInt())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Page Header (px)',
+                                value: _selectedPageSize.headerFontSize,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(headerFontSize: v.toInt())))),
+                      ],
+                    ),
+                    const Divider(),
+                    const Text('Margins (mm)',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Gutter (Inner)',
+                                value: _selectedPageSize.margins.gutterMm,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(
+                                            margins: _selectedPageSize.margins
+                                                .copyWith(
+                                                    gutterMm: v.toDouble()))))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Outer',
+                                value: _selectedPageSize.margins.outerMm,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(
+                                            margins: _selectedPageSize.margins
+                                                .copyWith(
+                                                    outerMm: v.toDouble()))))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Top',
+                                value: _selectedPageSize.margins.topMm,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(
+                                            margins: _selectedPageSize.margins
+                                                .copyWith(
+                                                    topMm: v.toDouble()))))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Bottom',
+                                value: _selectedPageSize.margins.bottomMm,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(
+                                            margins: _selectedPageSize.margins
+                                                .copyWith(
+                                                    bottomMm: v.toDouble()))))),
+                      ],
+                    ),
+                    const Divider(),
+                    const Text('Translation Column',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Width Fraction',
+                                value: _selectedPageSize
+                                    .translationWidthFraction,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            translationWidthFraction:
+                                                v.toDouble())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Arabic Scale',
+                                value: _selectedPageSize.translationArabicScale,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            translationArabicScale:
+                                                v.toDouble())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Font Size (px)',
+                                value: _selectedPageSize.translationFontSize,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            translationFontSize: v.toInt())))),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Line Height',
+                                value: _selectedPageSize.translationLineHeight,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            translationLineHeight:
+                                                v.toDouble())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Compact Threshold',
+                                value: _selectedPageSize
+                                    .translationCompactThreshold,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            translationCompactThreshold:
+                                                v.toInt())))),
+                      ],
+                    ),
+                    const Divider(),
+                    const Text('Word-by-Word',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Font Size (px)',
+                                value: _selectedPageSize.wbwFontSize,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(wbwFontSize: v.toInt())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Arabic Scale',
+                                value: _selectedPageSize.wbwArabicScale,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            wbwArabicScale: v.toDouble())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Arabic Line Height',
+                                value: _selectedPageSize.wbwArabicLineHeight,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            wbwArabicLineHeight:
+                                                v.toDouble())))),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Trans. Line Height',
+                                value: _selectedPageSize
+                                    .wbwTranslationLineHeight,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            wbwTranslationLineHeight:
+                                                v.toDouble())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Max Width (mm)',
+                                value: _selectedPageSize.wbwMaxWidthMm,
+                                isDecimal: true,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            wbwMaxWidthMm: v.toDouble())))),
+                      ],
+                    ),
+                    const Divider(),
+                    const Text('Legend & TOC',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Legend Font (px)',
+                                value: _selectedPageSize.legendFontSize,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(legendFontSize: v.toInt())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Legend Color Size',
+                                value: _selectedPageSize.legendColorSize,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            legendColorSize: v.toInt())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Legend Gap',
+                                value: _selectedPageSize.legendGap,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(legendGap: v.toInt())))),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Legend Item Gap',
+                                value: _selectedPageSize.legendItemGap,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(legendItemGap: v.toInt())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Legend Padding',
+                                value: _selectedPageSize.legendPadding,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(legendPadding: v.toInt())))),
+                        const SizedBox(width: 12),
+                        const Spacer(),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'TOC Font (px)',
+                                value: _selectedPageSize.tocFontSize,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize = _selectedPageSize
+                                        .copyWith(tocFontSize: v.toInt())))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'TOC Entries/Page',
+                                value: _selectedPageSize.tocEntriesPerPage,
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            tocEntriesPerPage: v.toInt())))),
+                      ],
                     ),
                   ],
                 ),
@@ -512,12 +1012,15 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     );
   }
 
-  Future<void> _generateHtml() async {
+  Future<void> _generateHtml({bool isPreview = false}) async {
+    final start = isPreview ? _previewPage : _startPage;
+    final end = isPreview ? _previewPage : _endPage;
+
     setState(() {
       _isGenerating = true;
       _statusMessage = 'Initializing databases...';
       _currentPage = 0;
-      _totalPages = _endPage - _startPage + 1;
+      _totalPages = end - start + 1;
       _outputPath = null;
     });
 
@@ -571,8 +1074,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
             _includeTranslation ? _localTranslationService : null,
       );
       final html = await generator.generateHtml(
-        startPage: _startPage,
-        endPage: _endPage,
+        startPage: start,
+        endPage: end,
         onProgress: (current, total) {
           setState(() {
             _currentPage = current;
@@ -592,8 +1095,10 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
       // Save to documents directory
       final docsDir = await getApplicationDocumentsDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileName =
-          'mushaf_${_selectedPageSize.name}_pages_${_startPage}_to_${_endPage}_$timestamp.html';
+      final prefix = isPreview
+          ? 'preview_page_${start}'
+          : 'mushaf_${_selectedPageSize.name}_pages_${start}_to_${end}';
+      final fileName = '${prefix}_$timestamp.html';
       final outputFile = File('${docsDir.path}/$fileName');
       await outputFile.writeAsString(html);
 
@@ -643,6 +1148,74 @@ class _ColorLegendItem extends StatelessWidget {
         const SizedBox(width: 4),
         Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
+    );
+  }
+}
+
+class _NumberInput extends StatefulWidget {
+  final String label;
+  final num value;
+  final ValueChanged<num> onChanged;
+  final bool isDecimal;
+
+  const _NumberInput({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.isDecimal = false,
+  });
+
+  @override
+  State<_NumberInput> createState() => _NumberInputState();
+}
+
+class _NumberInputState extends State<_NumberInput> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value.toString());
+  }
+
+  @override
+  void didUpdateWidget(_NumberInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only update controller if the value changed from outside (e.g. preset loaded)
+    // and it's different from what's currently being typed
+    if (widget.value != oldWidget.value) {
+      final currentVal = widget.isDecimal
+          ? double.tryParse(_controller.text)
+          : int.tryParse(_controller.text);
+      if (widget.value != currentVal) {
+        _controller.text = widget.value.toString();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      decoration: InputDecoration(
+        labelText: widget.label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+      ),
+      keyboardType: TextInputType.numberWithOptions(decimal: widget.isDecimal),
+      controller: _controller,
+      onChanged: (val) {
+        final parsed =
+            widget.isDecimal ? double.tryParse(val) : int.tryParse(val);
+        if (parsed != null) {
+          widget.onChanged(parsed);
+        }
+      },
     );
   }
 }

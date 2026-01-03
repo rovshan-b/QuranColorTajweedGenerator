@@ -1,9 +1,9 @@
-import 'package:tajweed/cached_tajweed_tokens.dart';
-import 'package:tajweed/mushaf_db_reader.dart';
-import 'package:tajweed/tajweed.dart';
-import 'package:tajweed/tajweed_token.dart';
-import 'package:tajweed/tajweed_word.dart';
-import 'package:tajweed/tajweed_rule.dart';
+import 'cached_tajweed_tokens.dart';
+import 'mushaf_db_reader.dart';
+import 'tajweed.dart';
+import 'tajweed_token.dart';
+import 'tajweed_word.dart';
+import 'tajweed_rule.dart';
 
 /// Maps words from the database to their corresponding Tajweed-colored tokens.
 class MushafWordMapper {

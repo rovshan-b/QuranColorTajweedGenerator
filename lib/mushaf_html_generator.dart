@@ -1,15 +1,15 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
-import 'package:tajweed/mushaf_db_reader.dart';
-import 'package:tajweed/mushaf_word_mapper.dart';
-import 'package:tajweed/tajweed_color_mapper.dart';
-import 'package:tajweed/tajweed_rule.dart';
-import 'package:tajweed/quran_metadata.dart';
-import 'package:tajweed/mushaf_page_config.dart';
-import 'package:tajweed/quran_enc_translation_service.dart';
-import 'package:tajweed/mushaf_wbw_service.dart';
-import 'package:tajweed/local_translation_service.dart';
+import 'mushaf_db_reader.dart';
+import 'mushaf_word_mapper.dart';
+import 'tajweed_color_mapper.dart';
+import 'tajweed_rule.dart';
+import 'quran_metadata.dart';
+import 'mushaf_page_config.dart';
+import 'quran_enc_translation_service.dart';
+import 'mushaf_wbw_service.dart';
+import 'local_translation_service.dart';
 
 /// Generates HTML output for Mushaf pages with Tajweed coloring
 class MushafHtmlGenerator {
