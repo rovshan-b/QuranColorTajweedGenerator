@@ -265,7 +265,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             .map(
                               (lang) => DropdownMenuItem(
                                 value: lang,
-                                child: Text(lang.toUpperCase()),
+                                child: Text(
+                                    MushafWbwService.getLanguageName(lang)),
                               ),
                             )
                             .toList(),
@@ -526,8 +527,9 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         includeTranslation: _includeTranslation,
         includeWbw: _includeWbw,
         wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,
-        wbwLanguageName:
-            _includeWbw ? _selectedWbwLanguage.toUpperCase() : null,
+        wbwLanguageName: _includeWbw
+            ? MushafWbwService.getLanguageName(_selectedWbwLanguage)
+            : null,
         translationKey: _selectedTranslationKey,
         translationName: translationName,
         translationService: _includeTranslation ? _translationService : null,

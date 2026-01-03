@@ -28,6 +28,33 @@ class MushafWbwService {
     'sq'
   ];
 
+  /// Mapping of language codes to full names
+  static const Map<String, String> languageNames = {
+    'bn': 'Bengali',
+    'in': 'Indonesian',
+    'en': 'English',
+    'fr': 'French',
+    'zh': 'Chinese',
+    'ur': 'Urdu',
+    'ta': 'Tamil',
+    'tr': 'Turkish',
+    'dv': 'Divehi',
+    'en_trans': 'English Transliteration',
+    'de': 'German',
+    'hi': 'Hindi',
+    'inh': 'Ingush',
+    'ml': 'Malayalam',
+    'ru': 'Russian',
+    'fa': 'Persian',
+    'sd': 'Sindhi',
+    'sq': 'Albanian',
+  };
+
+  /// Returns the full name for a language code, or the code itself if not found.
+  static String getLanguageName(String code) {
+    return languageNames[code] ?? code.toUpperCase();
+  }
+
   /// Load the CSV and index it for the selected language.
   Future<void> load(String languageCode) async {
     if (_isLoaded) _wbwCache.clear();
