@@ -8,8 +8,6 @@ A Flutter desktop application designed to generate high-quality, print-ready HTM
 | :----------------------------------------------------: | :---------------------------------------------------------------: |
 | <img src="screenshots/app-screenshot.png" width="400"> | <img src="screenshots/generated-page-screenshot.png" width="400"> |
 
-> **Note**: The core HTML generation logic and CSS layout strategies in this project were primarily developed using AI models.
-
 ## ⚠️ Disclaimer & User Responsibility
 
 **This software is a tool for generating layouts, but it does not guarantee perfection in every scenario.**
@@ -38,96 +36,83 @@ Users are **solely responsible** for verifying the final output, including but n
 
 - **Flexible Page Formats**:
 
-  - **Sizes**: A3, A4, B5, A5.
+  - **Sizes**: Presets for A3, A4, B5, A5, and fully custom dimensions.
   - **Margins**: Configurable gutter margins for RTL book binding (odd/even page alternation).
 
 - **Translation Support**:
 
   - **Side-column Translation**: Fetches translations from QuranEnc API or local JSON files.
-  - **Word-by-Word (WBW)**: Interlinear translation support (e.g., English, Turkish, Indonesian) sourced from CSV.
+  - **Word-by-Word (WBW)**: Interlinear translation support (e.g., English, Turkish, Indonesian).
   - **Compact Mode**: Automatically switches to inline translation layout for dense pages to prevent overflow.
 
-- **Print Optimization**:
-  - **Vector-like Quality**: Uses embedded Base64 fonts (Kitab) for consistent rendering across all devices.
-  - **CSS Paged Media**: Handles page breaks, cover pages, and empty filler pages for double-sided printing.
+- **Customization**:
+  - **Cover Page**: Customize the title, subtitle, and background color.
+  - **Structure**: Control the number of blank pages inserted after the cover.
+  - **Typography**: Adjust font sizes for Arabic, translations, and headers.
 
-## Developer Configuration
+## User Guide
 
-### Adjusting for Translations
+### 1. Configuration
 
-Different languages have vastly different text lengths (e.g., English vs. Indonesian vs. Turkish).
+Use the application dashboard to set up your desired output:
 
-**You must adjust `PageSize` values if using verbose languages or different fonts:**
+- **Layout & Typography**:
 
-1.  Open `lib/mushaf_page_config.dart`.
-2.  Locate the `PageSize` enum (A4, A5, etc.).
-3.  Tweak the parameters to fit your content.
+  - Select a **Page Size** preset or enter custom dimensions.
+  - Adjust **Margins** (Gutter, Outer, Top, Bottom) based on your printer or binding requirements.
+  - **Cover Color**: Enter a Hex color code (e.g., `#1a472a`) for the cover background.
+  - **Preface Blank Pages**: Set how many empty pages to insert between the cover and the Mushaf content.
 
-> **Tip**: If pages are overflowing (content cut off at the bottom), try reducing `translationFontSize` or increasing `translationCompactThreshold`.
+- **Content Options**:
 
-## How It Works
+  - **Include Translation**: Adds a side column with translation. You can adjust the width fraction and font size.
+  - **Include Word-by-Word**: Adds interlinear translation under each Arabic word.
 
-1.  **Data Source**:
+- **Custom Text**:
+  - You can rename the "Cover Title", "TOC Title", and other labels to suit your language or preference.
 
-    - `qpc-v4-tajweed-15-lines.db`: SQLite DB containing the 15-line Madani layout coordinates.
-    - `uthmani.db`: SQLite DB containing the Uthmani text and word metadata.
-    - `wbw-words.csv`: CSV file containing word-by-word translations.
+### 2. Generation
 
-2.  **Processing**:
+1. Set the **Page Range** (e.g., 1 to 604 for the full Quran).
+2. Click **Generate HTML**.
+3. The application will process the pages and automatically open the result in your default web browser.
 
-    - **Tokenization**: `MushafWordMapper` maps database words to pre-computed Tajweed tokens (`cached_tajweed_tokens.dart`).
-    - **Layout**: `MushafHtmlGenerator` builds the DOM, applying CSS classes for colors and layout based on the selected `PageSize`.
+### 3. Printing to PDF
 
-3.  **Output**:
-    - Generates a single HTML file in the user's Documents folder.
-    - The file embeds all necessary assets (fonts, styles), making it portable.
+To convert the HTML to a PDF file:
 
-## Usage
+1. In your browser, press `Ctrl+P` (Windows/Linux) or `Cmd+P` (macOS).
+2. **Destination**: Select "Save as PDF".
+3. **Layout**: Portrait.
+4. **Margins**: Set to **None** (the application handles margins via CSS).
+5. **Options**: Check **Background graphics** (essential for Tajweed colors and cover background).
+6. Click **Save**.
 
-1.  **Run the App**:
+## Developer Instructions
 
-    ```bash
-    flutter pub get
-    flutter run -d macos  # or windows/linux
-    ```
-
-2.  **Configure Generation**:
-
-    - **Page Range**: Select start and end pages (1-604).
-    - **Translation**: Toggle side translation and select source.
-    - **Word-by-Word**: Toggle interlinear translation and select language.
-    - **Page Size**: Choose the target paper format.
-
-3.  **Generate & Print**:
-    - Click "Generate HTML".
-    - Open the resulting file in a browser (Chrome/Safari/Edge/Firefox).
-    - **Print to PDF**:
-      - Layout: Portrait.
-      - Margins: None (CSS handles margins).
-      - **Options**: Enable "Background graphics".
-
-## Project Structure
-
-```
-lib/
-├── main.dart                    # Entry point
-├── mushaf_preview_screen.dart   # Main UI
-├── mushaf_html_generator.dart   # Core HTML/CSS engine
-├── mushaf_page_config.dart      # Page sizes & layout configuration
-├── mushaf_wbw_service.dart      # WBW CSV parser & cache
-├── mushaf_word_mapper.dart      # DB word to Tajweed token mapper
-├── mushaf_db_reader.dart        # SQLite interaction
-├── quran_enc_translation_service.dart # API client for translations
-├── local_translation_service.dart     # Local JSON translation reader
-└── cached_tajweed_tokens.dart   # Large dataset of Tajweed rules
-```
-
-## Requirements
+### Prerequisites
 
 - **Flutter SDK**: >=3.0.0
-- **Desktop Platform**: macOS, Windows, or Linux (Mobile is not supported due to `sqflite_common_ffi` usage).
-- **Assets**: Ensure `resources/` contains the required SQLite databases.
+- **Platform**: macOS, Windows, or Linux (Mobile is not supported due to `sqflite_common_ffi` usage).
 
-## Data Integrity
+### Building and Running
 
-The application implements strict bounds checking. If a word in the database does not match the expected Tajweed token structure, the generator will throw an exception and halt to prevent printing incorrect Quranic text.
+1. Get dependencies:
+   ```bash
+   flutter pub get
+   ```
+2. Run the application:
+   ```bash
+   flutter run -d macos  # or windows/linux
+   ```
+
+### Project Structure
+
+- `lib/mushaf_html_generator.dart`: Core logic for building the HTML DOM and CSS.
+- `lib/mushaf_page_config.dart`: Definitions for page sizes and layout configuration.
+- `lib/mushaf_preview_screen.dart`: Main UI for the application.
+- `resources/`: Contains the SQLite databases (`qpc-v4-tajweed-15-lines.db`, `uthmani.db`).
+
+### Data Integrity
+
+The application implements strict bounds checking. If a word in the database does not match the expected Tajweed token structure, the generator will throw an exception to prevent printing incorrect Quranic text.
