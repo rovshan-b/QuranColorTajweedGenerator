@@ -181,11 +181,28 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     }
   }
 
+  void _showHelpDialog(String title, String description) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(description),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildNumberInput({
     required String label,
     required num value,
     required ValueChanged<num> onChanged,
     bool isDecimal = false,
+    String? helpText,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -197,6 +214,15 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
           onChanged(v);
           _saveSettings();
         },
+        suffix: helpText != null
+            ? IconButton(
+                icon: const Icon(Icons.help_outline, size: 18),
+                onPressed: () => _showHelpDialog(label, helpText),
+                tooltip: 'Help',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              )
+            : null,
       ),
     );
   }
@@ -291,6 +317,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                           child: _buildNumberInput(
                             label: 'Start Page',
                             value: _startPage,
+                            helpText:
+                                'The first page of the Quran to include in the generated HTML.',
                             onChanged: (v) => _startPage = v.toInt(),
                           ),
                         ),
@@ -299,6 +327,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                           child: _buildNumberInput(
                             label: 'End Page',
                             value: _endPage,
+                            helpText:
+                                'The last page of the Quran to include in the generated HTML.',
                             onChanged: (v) => _endPage = v.toInt(),
                           ),
                         ),
@@ -311,6 +341,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                           child: _buildNumberInput(
                             label: 'Preview Page',
                             value: _previewPage,
+                            helpText:
+                                'The specific page to show when clicking the Preview button.',
                             onChanged: (v) => _previewPage = v.toInt(),
                           ),
                         ),
@@ -532,6 +564,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Width (mm)',
                                 value: _selectedPageSize.widthMm,
+                                helpText:
+                                    'Physical width of the page in millimeters.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(widthMm: v.toInt())))),
@@ -540,6 +574,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Height (mm)',
                                 value: _selectedPageSize.heightMm,
+                                helpText:
+                                    'Physical height of the page in millimeters.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(heightMm: v.toInt())))),
@@ -548,6 +584,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Padding (mm)',
                                 value: _selectedPageSize.paddingMm,
+                                helpText:
+                                    'Internal padding between the page edge and the content area.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(paddingMm: v.toInt())))),
@@ -562,6 +600,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Font Size (px)',
                                 value: _selectedPageSize.fontSize,
+                                helpText:
+                                    'Base size for the Arabic text in pixels.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(fontSize: v.toInt())))),
@@ -571,6 +611,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Line Height',
                                 value: _selectedPageSize.lineHeight,
                                 isDecimal: true,
+                                helpText:
+                                    'Vertical spacing between lines of Arabic text.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(lineHeight: v.toDouble())))),
@@ -580,6 +622,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Word Spacing',
                                 value: _selectedPageSize.wordSpacing,
                                 isDecimal: true,
+                                helpText:
+                                    'Horizontal spacing between Arabic words in em.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(wordSpacing: v.toDouble())))),
@@ -591,6 +635,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Surah Header (px)',
                                 value: _selectedPageSize.surahFontSize,
+                                helpText:
+                                    'Font size for the Surah name headers.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(surahFontSize: v.toInt())))),
@@ -599,6 +645,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Ayah Number (px)',
                                 value: _selectedPageSize.ayaNumberFontSize,
+                                helpText: 'Font size for the Ayah end markers.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
                                         _selectedPageSize.copyWith(
@@ -608,6 +655,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Page Header (px)',
                                 value: _selectedPageSize.headerFontSize,
+                                helpText:
+                                    'Font size for the text at the top of the page (Surah name, page number, Juz).',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(headerFontSize: v.toInt())))),
@@ -623,6 +672,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Gutter (Inner)',
                                 value: _selectedPageSize.margins.gutterMm,
                                 isDecimal: true,
+                                helpText:
+                                    'Margin on the binding side of the page (alternates left/right).',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(
@@ -635,6 +686,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Outer',
                                 value: _selectedPageSize.margins.outerMm,
                                 isDecimal: true,
+                                helpText:
+                                    'Margin on the outside edge of the page.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(
@@ -647,6 +700,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Top',
                                 value: _selectedPageSize.margins.topMm,
                                 isDecimal: true,
+                                helpText: 'Margin at the top of the page.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(
@@ -659,6 +713,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Bottom',
                                 value: _selectedPageSize.margins.bottomMm,
                                 isDecimal: true,
+                                helpText: 'Margin at the bottom of the page.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(
@@ -678,6 +733,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 value: _selectedPageSize
                                     .translationWidthFraction,
                                 isDecimal: true,
+                                helpText:
+                                    'Percentage of page width allocated to the translation column.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
                                         _selectedPageSize.copyWith(
@@ -689,6 +746,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Arabic Scale',
                                 value: _selectedPageSize.translationArabicScale,
                                 isDecimal: true,
+                                helpText:
+                                    'How much to shrink the Arabic text when translation is enabled.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
                                         _selectedPageSize.copyWith(
@@ -699,6 +758,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Font Size (px)',
                                 value: _selectedPageSize.translationFontSize,
+                                helpText:
+                                    'Size of the translation text in pixels.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
                                         _selectedPageSize.copyWith(
@@ -712,6 +773,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Line Height',
                                 value: _selectedPageSize.translationLineHeight,
                                 isDecimal: true,
+                                helpText:
+                                    'Spacing between lines of translation text.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
                                         _selectedPageSize.copyWith(
@@ -723,6 +786,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Compact Threshold',
                                 value: _selectedPageSize
                                     .translationCompactThreshold,
+                                helpText:
+                                    'Character count above which translation switches to inline mode.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
                                         _selectedPageSize.copyWith(
@@ -739,6 +804,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Font Size (px)',
                                 value: _selectedPageSize.wbwFontSize,
+                                helpText:
+                                    'Size of the word-by-word translation text in pixels.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(wbwFontSize: v.toInt())))),
@@ -748,6 +815,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Arabic Scale',
                                 value: _selectedPageSize.wbwArabicScale,
                                 isDecimal: true,
+                                helpText:
+                                    'How much to shrink the Arabic text when word-by-word translation is enabled.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
                                         _selectedPageSize.copyWith(
@@ -758,6 +827,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Arabic Line Height',
                                 value: _selectedPageSize.wbwArabicLineHeight,
                                 isDecimal: true,
+                                helpText:
+                                    'Line height for the Arabic text when word-by-word translation is enabled.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
                                         _selectedPageSize.copyWith(
@@ -773,6 +844,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 value: _selectedPageSize
                                     .wbwTranslationLineHeight,
                                 isDecimal: true,
+                                helpText:
+                                    'Line height for the word-by-word translation text.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
                                         _selectedPageSize.copyWith(
@@ -784,6 +857,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Max Width (mm)',
                                 value: _selectedPageSize.wbwMaxWidthMm,
                                 isDecimal: true,
+                                helpText:
+                                    'Maximum width allowed for a single word-by-word block in millimeters.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
                                         _selectedPageSize.copyWith(
@@ -799,6 +874,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Legend Font (px)',
                                 value: _selectedPageSize.legendFontSize,
+                                helpText:
+                                    'Font size for the Tajweed color legend text.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(legendFontSize: v.toInt())))),
@@ -807,6 +884,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Legend Color Size',
                                 value: _selectedPageSize.legendColorSize,
+                                helpText:
+                                    'Size of the color boxes in the Tajweed legend.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
                                         _selectedPageSize.copyWith(
@@ -816,6 +895,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Legend Gap',
                                 value: _selectedPageSize.legendGap,
+                                helpText:
+                                    'Spacing between different items in the Tajweed legend.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(legendGap: v.toInt())))),
@@ -827,6 +908,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Legend Item Gap',
                                 value: _selectedPageSize.legendItemGap,
+                                helpText:
+                                    'Spacing between the color box and the label within a legend item.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(legendItemGap: v.toInt())))),
@@ -835,6 +918,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Legend Padding',
                                 value: _selectedPageSize.legendPadding,
+                                helpText: 'Top padding for the legend section.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(legendPadding: v.toInt())))),
@@ -848,6 +932,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'TOC Font (px)',
                                 value: _selectedPageSize.tocFontSize,
+                                helpText:
+                                    'Font size for the Table of Contents entries.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(tocFontSize: v.toInt())))),
@@ -856,6 +942,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'TOC Entries/Page',
                                 value: _selectedPageSize.tocEntriesPerPage,
+                                helpText:
+                                    'Number of Surah entries to display per page in the Table of Contents.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
                                         _selectedPageSize.copyWith(
@@ -1157,12 +1245,14 @@ class _NumberInput extends StatefulWidget {
   final num value;
   final ValueChanged<num> onChanged;
   final bool isDecimal;
+  final Widget? suffix;
 
   const _NumberInput({
     required this.label,
     required this.value,
     required this.onChanged,
     this.isDecimal = false,
+    this.suffix,
   });
 
   @override
@@ -1206,6 +1296,7 @@ class _NumberInputState extends State<_NumberInput> {
         labelText: widget.label,
         border: const OutlineInputBorder(),
         isDense: true,
+        suffixIcon: widget.suffix,
       ),
       keyboardType: TextInputType.numberWithOptions(decimal: widget.isDecimal),
       controller: _controller,
