@@ -92,7 +92,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     }
 
     _startPage = _prefs.getInt('start_page') ?? 1;
-    _endPage = _prefs.getInt('end_page') ?? 5;
+    _endPage = _prefs.getInt('end_page') ?? 604;
     _previewPage = _prefs.getInt('preview_page') ?? 1;
     _includeTranslation = _prefs.getBool('include_translation') ?? false;
     _includeWbw = _prefs.getBool('include_wbw') ?? false;
@@ -229,6 +229,36 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     );
   }
 
+  Widget _buildTextInput({
+    required String label,
+    required String value,
+    required ValueChanged<String> onChanged,
+    String? helpText,
+    bool enabled = true,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: _TextInput(
+        label: label,
+        value: value,
+        enabled: enabled,
+        onChanged: (v) {
+          onChanged(v);
+          _saveSettings();
+        },
+        suffix: helpText != null
+            ? IconButton(
+                icon: const Icon(Icons.help_outline, size: 18),
+                onPressed: () => _showHelpDialog(label, helpText),
+                tooltip: 'Help',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              )
+            : null,
+      ),
+    );
+  }
+
   Future<void> _loadWbwLanguages() async {
     try {
       final langs = await MushafWbwService.fetchAvailableLanguages();
@@ -301,7 +331,54 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Page range selection moved to bottom
+            // Instructions Card
+            Card(
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline,
+                        color:
+                            Theme.of(context).colorScheme.onSecondaryContainer),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'How to generate PDF',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSecondaryContainer,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '1. Configure your layout and click "Generate HTML".\n'
+                            '2. The file will open automatically in your browser.\n'
+                            '3. Use your browser\'s "Print" feature (Ctrl+P / Cmd+P) and select "Save as PDF".\n'
+                            '4. Ensure "Background graphics" is enabled in print settings for correct colors.',
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSecondaryContainer,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
 
             // Page size selection
@@ -877,6 +954,97 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                             tocEntriesPerPage: v.toInt())))),
                       ],
                     ),
+                    const Divider(),
+                    const Text('Custom Text',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildTextInput(
+                                label: 'Cover Title',
+                                value: _selectedPageSize.textConfig.coverTitle,
+                                helpText: 'Main title on the cover page.',
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            textConfig: _selectedPageSize
+                                                .textConfig
+                                                .copyWith(coverTitle: v))))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildTextInput(
+                                label: 'Cover Subtitle',
+                                value: _selectedPageSize
+                                    .textConfig.coverSubtitle,
+                                helpText: 'Subtitle on the cover page.',
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            textConfig: _selectedPageSize
+                                                .textConfig
+                                                .copyWith(coverSubtitle: v))))),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildTextInput(
+                                label: 'TOC Title',
+                                value: _selectedPageSize.textConfig.tocTitle,
+                                helpText: 'Title for the Table of Contents.',
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            textConfig: _selectedPageSize
+                                                .textConfig
+                                                .copyWith(tocTitle: v))))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildTextInput(
+                                label: 'Blank Page Text',
+                                value: _selectedPageSize
+                                    .textConfig.blankPageText,
+                                helpText:
+                                    'Text displayed on the intentionally blank page.',
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            textConfig: _selectedPageSize
+                                                .textConfig
+                                                .copyWith(blankPageText: v))))),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildTextInput(
+                                label: 'Translation Label',
+                                value: _selectedPageSize
+                                    .textConfig.translationLabel,
+                                helpText:
+                                    'Label for the translation on the cover page.',
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            textConfig: _selectedPageSize
+                                                .textConfig
+                                                .copyWith(
+                                                    translationLabel: v))))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildTextInput(
+                                label: 'WBW Label',
+                                value: _selectedPageSize.textConfig.wbwLabel,
+                                helpText:
+                                    'Label for the word-by-word translation on the cover page.',
+                                onChanged: (v) => setState(() =>
+                                    _selectedPageSize =
+                                        _selectedPageSize.copyWith(
+                                            textConfig: _selectedPageSize
+                                                .textConfig
+                                                .copyWith(wbwLabel: v))))),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -1325,6 +1493,64 @@ class _NumberInputState extends State<_NumberInput> {
           widget.onChanged(parsed);
         }
       },
+    );
+  }
+}
+
+class _TextInput extends StatefulWidget {
+  final String label;
+  final String value;
+  final ValueChanged<String> onChanged;
+  final Widget? suffix;
+  final bool enabled;
+
+  const _TextInput({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.suffix,
+    this.enabled = true,
+  });
+
+  @override
+  State<_TextInput> createState() => _TextInputState();
+}
+
+class _TextInputState extends State<_TextInput> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+  }
+
+  @override
+  void didUpdateWidget(_TextInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != oldWidget.value && widget.value != _controller.text) {
+      _controller.text = widget.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      enabled: widget.enabled,
+      decoration: InputDecoration(
+        labelText: widget.label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+        suffixIcon: widget.suffix,
+      ),
+      controller: _controller,
+      onChanged: widget.onChanged,
     );
   }
 }

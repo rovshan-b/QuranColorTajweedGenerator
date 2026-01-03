@@ -54,6 +54,63 @@ class BookMargins {
   static const BookMargins defaultMargins = BookMargins();
 }
 
+/// Configuration for user-visible text in the generated Mushaf
+class MushafTextConfig {
+  final String coverTitle;
+  final String coverSubtitle;
+  final String tocTitle;
+  final String blankPageText;
+  final String translationLabel;
+  final String wbwLabel;
+
+  const MushafTextConfig({
+    this.coverTitle = 'ٱلْقُرْآنُ ٱلْكَرِيمُ',
+    this.coverSubtitle = 'The Noble Quran',
+    this.tocTitle = 'Table of Contents',
+    this.blankPageText = 'This page is intentionally left blank',
+    this.translationLabel = 'Translation',
+    this.wbwLabel = 'Word by Word',
+  });
+
+  MushafTextConfig copyWith({
+    String? coverTitle,
+    String? coverSubtitle,
+    String? tocTitle,
+    String? blankPageText,
+    String? translationLabel,
+    String? wbwLabel,
+  }) {
+    return MushafTextConfig(
+      coverTitle: coverTitle ?? this.coverTitle,
+      coverSubtitle: coverSubtitle ?? this.coverSubtitle,
+      tocTitle: tocTitle ?? this.tocTitle,
+      blankPageText: blankPageText ?? this.blankPageText,
+      translationLabel: translationLabel ?? this.translationLabel,
+      wbwLabel: wbwLabel ?? this.wbwLabel,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'coverTitle': coverTitle,
+        'coverSubtitle': coverSubtitle,
+        'tocTitle': tocTitle,
+        'blankPageText': blankPageText,
+        'translationLabel': translationLabel,
+        'wbwLabel': wbwLabel,
+      };
+
+  factory MushafTextConfig.fromJson(Map<String, dynamic> json) =>
+      MushafTextConfig(
+        coverTitle: json['coverTitle'] as String? ?? 'ٱلْقُرْآنُ ٱلْكَرِيمُ',
+        coverSubtitle: json['coverSubtitle'] as String? ?? 'The Noble Quran',
+        tocTitle: json['tocTitle'] as String? ?? 'Table of Contents',
+        blankPageText: json['blankPageText'] as String? ??
+            'This page is intentionally left blank',
+        translationLabel: json['translationLabel'] as String? ?? 'Translation',
+        wbwLabel: json['wbwLabel'] as String? ?? 'Word by Word',
+      );
+}
+
 /// Page size configuration for HTML/PDF output
 class PageSize {
   /// Display name of the page size (e.g., 'A4').
@@ -140,6 +197,9 @@ class PageSize {
   /// Character count threshold to switch to compact translation mode.
   final int translationCompactThreshold;
 
+  /// Custom text configuration for the Mushaf.
+  final MushafTextConfig textConfig;
+
   const PageSize({
     required this.name,
     required this.widthMm,
@@ -169,6 +229,7 @@ class PageSize {
     required this.margins,
     required this.tocEntriesPerPage,
     required this.translationCompactThreshold,
+    this.textConfig = const MushafTextConfig(),
   });
 
   static const PageSize a3 = PageSize(
@@ -199,6 +260,14 @@ class PageSize {
     wordSpacing: -0.35,
     tocEntriesPerPage: 27,
     translationCompactThreshold: 3000,
+    textConfig: MushafTextConfig(
+      coverTitle: 'ٱلْقُرْآنُ ٱلْكَرِيمُ',
+      coverSubtitle: 'The Noble Quran',
+      tocTitle: 'Table of Contents',
+      blankPageText: 'This page is intentionally left blank',
+      translationLabel: 'Translation',
+      wbwLabel: 'Word by Word',
+    ),
     margins: BookMargins(
       gutterMm: 26.0,
       outerMm: 26.0,
@@ -235,6 +304,14 @@ class PageSize {
     wordSpacing: -0.35,
     tocEntriesPerPage: 21,
     translationCompactThreshold: 1600,
+    textConfig: MushafTextConfig(
+      coverTitle: 'ٱلْقُرْآنُ ٱلْكَرِيمُ',
+      coverSubtitle: 'The Noble Quran',
+      tocTitle: 'Table of Contents',
+      blankPageText: 'This page is intentionally left blank',
+      translationLabel: 'Translation',
+      wbwLabel: 'Word by Word',
+    ),
     margins: BookMargins(
       gutterMm: 26.0,
       outerMm: 26.0,
@@ -271,6 +348,14 @@ class PageSize {
     wordSpacing: -0.3,
     tocEntriesPerPage: 19,
     translationCompactThreshold: 800,
+    textConfig: MushafTextConfig(
+      coverTitle: 'ٱلْقُرْآنُ ٱلْكَرِيمُ',
+      coverSubtitle: 'The Noble Quran',
+      tocTitle: 'Table of Contents',
+      blankPageText: 'This page is intentionally left blank',
+      translationLabel: 'Translation',
+      wbwLabel: 'Word by Word',
+    ),
     margins: BookMargins(
       gutterMm: 26.0,
       outerMm: 26.0,
@@ -307,6 +392,14 @@ class PageSize {
     wordSpacing: -0.5,
     tocEntriesPerPage: 16,
     translationCompactThreshold: 1000,
+    textConfig: MushafTextConfig(
+      coverTitle: 'ٱلْقُرْآنُ ٱلْكَرِيمُ',
+      coverSubtitle: 'The Noble Quran',
+      tocTitle: 'Table of Contents',
+      blankPageText: 'This page is intentionally left blank',
+      translationLabel: 'Translation',
+      wbwLabel: 'Word by Word',
+    ),
     margins: BookMargins(
       gutterMm: 26.0,
       outerMm: 26.0,
@@ -346,6 +439,7 @@ class PageSize {
     BookMargins? margins,
     int? tocEntriesPerPage,
     int? translationCompactThreshold,
+    MushafTextConfig? textConfig,
   }) {
     return PageSize(
       name: name ?? this.name,
@@ -381,6 +475,7 @@ class PageSize {
       tocEntriesPerPage: tocEntriesPerPage ?? this.tocEntriesPerPage,
       translationCompactThreshold:
           translationCompactThreshold ?? this.translationCompactThreshold,
+      textConfig: textConfig ?? this.textConfig,
     );
   }
 
@@ -413,6 +508,7 @@ class PageSize {
         'margins': margins.toJson(),
         'tocEntriesPerPage': tocEntriesPerPage,
         'translationCompactThreshold': translationCompactThreshold,
+        'textConfig': textConfig.toJson(),
       };
 
   factory PageSize.fromJson(Map<String, dynamic> json) => PageSize(
@@ -448,6 +544,10 @@ class PageSize {
         margins: BookMargins.fromJson(json['margins'] as Map<String, dynamic>),
         tocEntriesPerPage: json['tocEntriesPerPage'] as int,
         translationCompactThreshold: json['translationCompactThreshold'] as int,
+        textConfig: json['textConfig'] != null
+            ? MushafTextConfig.fromJson(
+                json['textConfig'] as Map<String, dynamic>)
+            : const MushafTextConfig(),
       );
 
   /// Calculates adjusted translation font size based on text length.
