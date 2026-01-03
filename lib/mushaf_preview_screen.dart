@@ -50,6 +50,10 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   List<PageSize> _customPresets = [];
   late SharedPreferences _prefs;
 
+  // Cover & Layout settings
+  int _prefaceBlankPages = 1;
+  String _coverBackgroundColor = '#1a472a'; // Default green
+
   @override
   void initState() {
     super.initState();
@@ -98,6 +102,9 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     _includeWbw = _prefs.getBool('include_wbw') ?? false;
     _selectedWbwLanguage = _prefs.getString('wbw_language') ?? 'en';
     _selectedTranslationKey = _prefs.getString('translation_key');
+    _prefaceBlankPages = _prefs.getInt('preface_blank_pages') ?? 1;
+    _coverBackgroundColor =
+        _prefs.getString('cover_background_color') ?? '#1a472a';
   }
 
   Future<void> _saveSettings() async {
@@ -114,6 +121,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     if (_selectedTranslationKey != null) {
       await _prefs.setString('translation_key', _selectedTranslationKey!);
     }
+    await _prefs.setInt('preface_blank_pages', _prefaceBlankPages);
+    await _prefs.setString('cover_background_color', _coverBackgroundColor);
   }
 
   Future<void> _showSavePresetDialog() async {
@@ -486,6 +495,31 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize = _selectedPageSize
                                         .copyWith(paddingMm: v.toInt())))),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildNumberInput(
+                                label: 'Preface Blank Pages',
+                                value: _prefaceBlankPages,
+                                helpText:
+                                    'Number of blank pages to insert after the cover.',
+                                onChanged: (v) => setState(() {
+                                      _prefaceBlankPages = v.toInt();
+                                      _saveSettings();
+                                    }))),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildTextInput(
+                                label: 'Cover Color (Hex)',
+                                value: _coverBackgroundColor,
+                                helpText:
+                                    'Background color for the cover page (e.g. #1a472a).',
+                                onChanged: (v) => setState(() {
+                                      _coverBackgroundColor = v;
+                                      _saveSettings();
+                                    }))),
                       ],
                     ),
                     const Divider(),
@@ -1313,6 +1347,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
       final generator = MushafHtmlGenerator(
         dbReader,
         pageSize: _selectedPageSize,
+        prefaceBlankPages: _prefaceBlankPages,
+        coverBackgroundColor: _coverBackgroundColor,
         includeTranslation: _includeTranslation,
         includeWbw: _includeWbw,
         wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,

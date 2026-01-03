@@ -27,6 +27,8 @@ class MushafHtmlGenerator {
   final String? translationName;
   final String? translationLanguage;
   final String? wbwLanguageName;
+  final int prefaceBlankPages;
+  final String coverBackgroundColor;
 
   // Debug flag for translation stats - set to true to see char count and font size on each page
   static const bool _debugTranslationStats = false;
@@ -48,6 +50,8 @@ class MushafHtmlGenerator {
     this.translationName,
     this.translationLanguage,
     this.wbwLanguageName,
+    this.prefaceBlankPages = 1,
+    this.coverBackgroundColor = '#1a472a',
   })  : margins = margins ?? pageSize.margins,
         _wordMapper = MushafWordMapper(),
         _wbwService = MushafWbwService();
@@ -115,20 +119,24 @@ class MushafHtmlGenerator {
     // Add cover page
     buffer.writeln(_generateCoverPage());
 
-    // Add one empty page after cover (Physical Page 2)
-    buffer.writeln(_generateEmptyPage(physicalPageNumber: 2));
+    // Add configured number of empty pages after cover
+    // Physical page starts at 2 (1 is cover)
+    for (int i = 0; i < prefaceBlankPages; i++) {
+      buffer.writeln(_generateEmptyPage(physicalPageNumber: 2 + i));
+    }
 
     // Generate content for each page
-    // prefacePages is 1 (for the empty page after cover)
     for (int pageNum = startPage; pageNum <= endPage; pageNum++) {
       onProgress?.call(pageNum - startPage + 1, endPage - startPage + 1);
-      final pageHtml = await _generatePageHtml(pageNum, prefacePages: 1);
+      final pageHtml =
+          await _generatePageHtml(pageNum, prefacePages: prefaceBlankPages);
       buffer.writeln(pageHtml);
     }
 
     // Generate Table of Contents at the end
     final int contentPagesCount = endPage - startPage + 1;
-    final int tocStartPhysicalPage = contentPagesCount + 3;
+    // Cover (1) + Blank Pages (N) + Content (C) + 1 (Next)
+    final int tocStartPhysicalPage = contentPagesCount + prefaceBlankPages + 2;
     final tocResult =
         await _generateTableOfContents(startPhysicalPage: tocStartPhysicalPage);
     buffer.writeln(tocResult['html']);
@@ -502,7 +510,7 @@ class MushafHtmlGenerator {
       width: ${pageSize.widthMm}mm;
       height: ${pageSize.heightMm}mm;
       margin: 20px auto;
-      background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+      background: $coverBackgroundColor;
       display: flex;
       flex-direction: column;
       justify-content: center;
