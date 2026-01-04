@@ -29,6 +29,7 @@ class MushafHtmlGenerator {
   final String? wbwLanguageName;
   final int prefaceBlankPages;
   final String coverBackgroundColor;
+  final bool justifyTranslation;
 
   // Debug flag for translation stats - set to true to see char count and font size on each page
   static const bool _debugTranslationStats = false;
@@ -52,6 +53,7 @@ class MushafHtmlGenerator {
     this.wbwLanguageName,
     this.prefaceBlankPages = 1,
     this.coverBackgroundColor = '#1a472a',
+    this.justifyTranslation = true,
   })  : margins = margins ?? pageSize.margins,
         _wordMapper = MushafWordMapper(),
         _wbwService = MushafWbwService();
@@ -450,7 +452,7 @@ class MushafHtmlGenerator {
     .translation-wrapper {
       display: block;
       line-height: ${pageSize.translationLineHeight};
-      /*text-align: justify;*/
+      ${justifyTranslation ? 'text-align: justify;' : ''}
       text-justify: inter-word;
     }
 
@@ -459,7 +461,7 @@ class MushafHtmlGenerator {
       line-height: inherit;
       color: #333;
       direction: ltr;
-      /*text-align: justify;*/
+      ${justifyTranslation ? 'text-align: justify;' : ''}
       text-justify: inter-word;
       word-break: break-word;
       hyphens: auto;

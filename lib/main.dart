@@ -15,7 +15,7 @@ void main() async {
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.normal,
-    title: 'Tajweed Mushaf Generator',
+    title: 'Mushaf Generator',
   );
 
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
@@ -39,7 +39,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Tajweed Mushaf Generator',
+      title: 'Mushaf Generator',
       theme: ThemeData(
         brightness: Brightness.light,
         useMaterial3: true,

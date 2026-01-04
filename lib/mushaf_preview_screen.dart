@@ -53,6 +53,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   // Cover & Layout settings
   int _prefaceBlankPages = 1;
   String _coverBackgroundColor = '#1a472a'; // Default green
+  bool _justifyTranslation = false;
 
   @override
   void initState() {
@@ -105,6 +106,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     _prefaceBlankPages = _prefs.getInt('preface_blank_pages') ?? 1;
     _coverBackgroundColor =
         _prefs.getString('cover_background_color') ?? '#1a472a';
+    _justifyTranslation = _prefs.getBool('justify_translation') ?? false;
   }
 
   Future<void> _saveSettings() async {
@@ -123,6 +125,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     }
     await _prefs.setInt('preface_blank_pages', _prefaceBlankPages);
     await _prefs.setString('cover_background_color', _coverBackgroundColor);
+    await _prefs.setBool('justify_translation', _justifyTranslation);
   }
 
   Future<void> _showSavePresetDialog() async {
@@ -701,7 +704,6 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
-                      const SizedBox(height: 16),
                     ],
                     const Text('Translation Column',
                         style: TextStyle(fontWeight: FontWeight.bold)),
@@ -780,6 +782,18 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                                 v.toInt())))),
                       ],
                     ),
+                    SwitchListTile(
+                      title: const Text('Justify translation text'),
+                      value: _justifyTranslation,
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (val) {
+                        setState(() {
+                          _justifyTranslation = val;
+                          _saveSettings();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     const Divider(),
                     SwitchListTile(
                       title: const Text('Include word-by-word translation'),
@@ -827,6 +841,14 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             }
                           },
                         ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'WBW translations contributed by Greentech Apps Foundation',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontStyle: FontStyle.italic,
+                              color: Colors.grey,
+                            ),
+                      ),
                       const SizedBox(height: 16),
                     ],
                     const Text('Word-by-Word',
@@ -1349,6 +1371,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         pageSize: _selectedPageSize,
         prefaceBlankPages: _prefaceBlankPages,
         coverBackgroundColor: _coverBackgroundColor,
+        justifyTranslation: _justifyTranslation,
         includeTranslation: _includeTranslation,
         includeWbw: _includeWbw,
         wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,
