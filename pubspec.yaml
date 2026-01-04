@@ -132,3 +132,6 @@ inno_bundle:
     - english
   url: https://github.com/rovshan-b/QuranColorTajweedGenerator
   publisher: Rovshan
+  files:
+    - build/windows/x64/runner/Release/sqlite3.x64.windows.dll
+    - build/windows/x64/runner/Release/sqlite3.dll
