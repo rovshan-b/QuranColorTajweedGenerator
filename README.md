@@ -1,6 +1,6 @@
 # Tajweed Quran Mushaf Generator
 
-A Flutter desktop application designed to generate high-quality, print-ready HTML files of the Quran Mushaf with Tajweed color coding. The generated HTML is optimized for conversion to PDF using browser print functionality, supporting various page sizes and translation options.
+A Flutter desktop application designed to generate high-quality, print-ready HTML files of the Quran Mushaf with Tajweed color coding. The generated HTML is optimized for conversion to PDF using browser print functionality, supporting various page sizes and translation options. Tested only in **Firefox** browser.
 
 ## 📥 Download Installers
 
