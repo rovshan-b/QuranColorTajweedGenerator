@@ -33,8 +33,8 @@ dependencies:
     sdk: flutter
 
   # SQLite for desktop
-  sqflite_common_ffi: ^2.3.0
-  sqlite3_flutter_libs: ^0.5.20
+  sqflite_common_ffi: ^2.4.0
+  sqlite3: ^3.1.2
   path: ^1.8.3
   path_provider: ^2.1.1
 
@@ -131,3 +131,4 @@ inno_bundle:
   languages:
     - english
   url: https://github.com/rovshan-b/QuranColorTajweedGenerator
+  publisher: Rovshan

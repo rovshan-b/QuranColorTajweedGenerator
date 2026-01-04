@@ -5,7 +5,6 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   printing
   screen_retriever
-  sqlite3_flutter_libs
   window_manager
 )
 
