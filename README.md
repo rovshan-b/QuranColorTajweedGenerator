@@ -1,6 +1,9 @@
 # Tajweed Quran Mushaf Generator
 
-A Flutter desktop application designed to generate high-quality, print-ready HTML files of the Quran Mushaf with Tajweed color coding. The generated HTML is optimized for conversion to PDF using browser print functionality, supporting various page sizes and translation options. Tested only in **Firefox** browser.
+A Flutter desktop application designed to generate high-quality, print-ready HTML and PNG assets of the Quran Mushaf with Tajweed color coding. The application supports two primary workflows:
+
+1. **HTML to PDF**: Optimized for browser-to-PDF printing with support for various page sizes and side-column translations.
+2. **PNG + Coordinates**: High-resolution image generation for use in mobile apps or websites, including pixel-perfect coordinate tracking (`glyphs.db`) for interactivity.
 
 ## 📥 Download Installers
 
@@ -45,6 +48,13 @@ Users are **solely responsible** for verifying the final output, including but n
 
   - **Sizes**: Presets for A3, A4, B5, A5, and fully custom dimensions.
   - **Margins**: Configurable gutter margins for RTL book binding (odd/even page alternation).
+  - **Centering**: Smart vertical alignment that keeps content centered or top-aligned.
+
+- **PNG Export Features**:
+
+  - **High Resolution**: Configurable DPI (e.g., 300, 600) for sharp, professional assets.
+  - **Coordinate Tracking**: Generates a `glyphs.db` SQLite file alongside images, mapping every word's bounding box to its Surah/Ayah position.
+  - **Decoration Toggle**: Option to hide page headers and legends for clean screenshots.
 
 - **Translation Support**:
 
@@ -80,11 +90,22 @@ Use the application dashboard to set up your desired output:
 
 ### 2. Generation
 
-1. Set the **Page Range** (e.g., 1 to 604 for the full Quran).
-2. Click **Generate HTML**.
-3. The application will process the pages and automatically open the result in your default web browser.
+#### HTML Workflow (PDF)
 
-### 3. Printing to PDF
+1. Select **HTML (PDF)** in the Format setting.
+2. Set the **Page Range** (e.g., 1 to 604 for the full Quran).
+3. Click **Generate**.
+4. The application will process the pages and automatically open the result in your default web browser.
+
+#### PNG Workflow (Apps/Assets)
+
+1. Select **PNG + Coordinates** in the Format setting.
+2. Set the **Resolution (DPI)** (e.g., 300 for standard, 600 for high quality).
+3. Toggle **Show Page Header & Legend** if you want clean pages without titles.
+4. Click **Generate**.
+5. A folder containing numbered PNGs (`page001.png`, etc.) and a `glyphs.db` file will be created and opened.
+
+### 3. Printing to PDF (HTML Workflow)
 
 To convert the HTML to a PDF file:
 

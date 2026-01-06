@@ -121,6 +121,9 @@ flutter:
     - family: Amiri
       fonts:
         - asset: assets/fonts/AmiriQuran.ttf
+    - family: Basmala
+      fonts:
+        - asset: assets/fonts/ArabicSymbols.otf
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages

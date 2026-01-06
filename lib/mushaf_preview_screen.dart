@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'mushaf_db_initializer.dart';
 import 'mushaf_db_reader.dart';
 import 'mushaf_html_generator.dart';
+import 'mushaf_image_generator.dart';
 import 'mushaf_page_config.dart';
 import 'quran_enc_translation_service.dart';
 import 'mushaf_wbw_service.dart';
@@ -49,6 +50,11 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   PageSize _selectedPageSize = PageSize.a4;
   List<PageSize> _customPresets = [];
   late SharedPreferences _prefs;
+
+  // Output format settings
+  String _outputFormat = 'HTML'; // 'HTML' or 'PNG'
+  int _dpi = 300;
+  bool _showDecorations = true;
 
   // Cover & Layout settings
   int _prefaceBlankPages = 1;
@@ -107,6 +113,9 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     _coverBackgroundColor =
         _prefs.getString('cover_background_color') ?? '#1a472a';
     _justifyTranslation = _prefs.getBool('justify_translation') ?? false;
+    _outputFormat = _prefs.getString('output_format') ?? 'HTML';
+    _dpi = _prefs.getInt('dpi') ?? 300;
+    _showDecorations = _prefs.getBool('show_decorations') ?? true;
   }
 
   Future<void> _saveSettings() async {
@@ -126,6 +135,9 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     await _prefs.setInt('preface_blank_pages', _prefaceBlankPages);
     await _prefs.setString('cover_background_color', _coverBackgroundColor);
     await _prefs.setBool('justify_translation', _justifyTranslation);
+    await _prefs.setString('output_format', _outputFormat);
+    await _prefs.setInt('dpi', _dpi);
+    await _prefs.setBool('show_decorations', _showDecorations);
   }
 
   Future<void> _showSavePresetDialog() async {
@@ -336,13 +348,74 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mushaf HTML Generator'),
+        title: Text(_outputFormat == 'HTML'
+            ? 'Mushaf HTML Generator'
+            : 'Mushaf Image Generator'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Output Settings
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Output Settings',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        const Text('Format: '),
+                        const SizedBox(width: 8),
+                        SegmentedButton<String>(
+                          segments: const [
+                            ButtonSegment(
+                                value: 'HTML',
+                                label: Text('HTML (PDF)'),
+                                icon: Icon(Icons.html)),
+                            ButtonSegment(
+                                value: 'PNG',
+                                label: Text('PNG + Coordinates'),
+                                icon: Icon(Icons.image)),
+                          ],
+                          selected: {_outputFormat},
+                          onSelectionChanged: (val) {
+                            setState(() {
+                              _outputFormat = val.first;
+                              _saveSettings();
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    if (_outputFormat == 'PNG') ...[
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        title: const Text('Show Page Header & Legend'),
+                        subtitle: const Text(
+                            'Includes surah name, page number, juz and tajweed color key'),
+                        value: _showDecorations,
+                        contentPadding: EdgeInsets.zero,
+                        onChanged: (val) {
+                          setState(() {
+                            _showDecorations = val;
+                            _saveSettings();
+                          });
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // Instructions Card
             Card(
               color: Theme.of(context).colorScheme.secondaryContainer,
@@ -360,7 +433,9 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'How to generate PDF',
+                            _outputFormat == 'HTML'
+                                ? 'How to generate PDF'
+                                : 'How to generate Images',
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
@@ -373,10 +448,14 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '1. Configure your layout and click "Generate HTML".\n'
-                            '2. The file will open automatically in your browser.\n'
-                            '3. Use your browser\'s "Print" feature (Ctrl+P / Cmd+P) and select "Save as PDF".\n'
-                            '4. Ensure "Background graphics" is enabled in print settings for correct colors.',
+                            _outputFormat == 'HTML'
+                                ? '1. Configure your layout and click "Generate HTML".\n'
+                                    '2. The file will open automatically in your browser.\n'
+                                    '3. Use your browser\'s "Print" feature (Ctrl+P / Cmd+P) and select "Save as PDF".\n'
+                                    '4. Ensure "Background graphics" is enabled in print settings for correct colors.'
+                                : '1. Configure your image resolution (DPI).\n'
+                                    '2. Click "Generate" to render PNG files.\n'
+                                    '3. The folder containing the images and glyphs.db will open automatically.',
                             style: TextStyle(
                               color: Theme.of(context)
                                   .colorScheme
@@ -506,6 +585,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Preface Blank Pages',
                                 value: _prefaceBlankPages,
+                                enabled: _outputFormat == 'HTML',
                                 helpText:
                                     'Number of blank pages to insert after the cover.',
                                 onChanged: (v) => setState(() {
@@ -517,12 +597,26 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildTextInput(
                                 label: 'Cover Color (Hex)',
                                 value: _coverBackgroundColor,
+                                enabled: _outputFormat == 'HTML',
                                 helpText:
                                     'Background color for the cover page (e.g. #1a472a).',
                                 onChanged: (v) => setState(() {
                                       _coverBackgroundColor = v;
                                       _saveSettings();
                                     }))),
+                        if (_outputFormat == 'PNG') ...[
+                          const SizedBox(width: 12),
+                          Expanded(
+                              child: _buildNumberInput(
+                                  label: 'Resolution (DPI)',
+                                  value: _dpi,
+                                  helpText:
+                                      'Dots Per Inch. Higher values produce larger, higher-quality images.',
+                                  onChanged: (v) => setState(() {
+                                        _dpi = v.toInt();
+                                        _saveSettings();
+                                      }))),
+                        ],
                       ],
                     ),
                     const Divider(),
@@ -659,22 +753,29 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                     const Divider(),
                     SwitchListTile(
                       title: const Text('Include translation (outer column)'),
-                      value: _includeTranslation,
+                      subtitle: _outputFormat == 'PNG'
+                          ? const Text(
+                              'Translation column is only supported in HTML format',
+                              style: TextStyle(color: Colors.orange))
+                          : null,
+                      value: _includeTranslation && _outputFormat == 'HTML',
                       contentPadding: EdgeInsets.zero,
-                      onChanged: (val) {
-                        setState(() {
-                          _includeTranslation = val;
-                          if (_includeTranslation &&
-                              _selectedTranslationKey == null) {
-                            _selectedTranslationKey =
-                                _availableTranslations.isNotEmpty
-                                    ? _availableTranslations.first.key
-                                    : 'english_saheeh';
-                          }
-                        });
-                      },
+                      onChanged: _outputFormat == 'PNG'
+                          ? null
+                          : (val) {
+                              setState(() {
+                                _includeTranslation = val;
+                                if (_includeTranslation &&
+                                    _selectedTranslationKey == null) {
+                                  _selectedTranslationKey =
+                                      _availableTranslations.isNotEmpty
+                                          ? _availableTranslations.first.key
+                                          : 'english_saheeh';
+                                }
+                              });
+                            },
                     ),
-                    if (_includeTranslation) ...[
+                    if (_includeTranslation && _outputFormat == 'HTML') ...[
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
                         value: _selectedTranslationKey,
@@ -715,7 +816,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 value: _selectedPageSize
                                     .translationWidthFraction,
                                 isDecimal: true,
-                                enabled: _includeTranslation,
+                                enabled: _includeTranslation &&
+                                    _outputFormat == 'HTML',
                                 helpText:
                                     'Percentage of page width allocated to the translation column.',
                                 onChanged: (v) => setState(() =>
@@ -729,7 +831,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Arabic Scale',
                                 value: _selectedPageSize.translationArabicScale,
                                 isDecimal: true,
-                                enabled: _includeTranslation,
+                                enabled: _includeTranslation &&
+                                    _outputFormat == 'HTML',
                                 helpText:
                                     'How much to shrink the Arabic text when translation is enabled.',
                                 onChanged: (v) => setState(() =>
@@ -742,7 +845,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'Font Size (px)',
                                 value: _selectedPageSize.translationFontSize,
-                                enabled: _includeTranslation,
+                                enabled: _includeTranslation &&
+                                    _outputFormat == 'HTML',
                                 helpText:
                                     'Size of the translation text in pixels.',
                                 onChanged: (v) => setState(() =>
@@ -758,7 +862,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Line Height',
                                 value: _selectedPageSize.translationLineHeight,
                                 isDecimal: true,
-                                enabled: _includeTranslation,
+                                enabled: _includeTranslation &&
+                                    _outputFormat == 'HTML',
                                 helpText:
                                     'Spacing between lines of translation text.',
                                 onChanged: (v) => setState(() =>
@@ -772,7 +877,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Compact Threshold',
                                 value: _selectedPageSize
                                     .translationCompactThreshold,
-                                enabled: _includeTranslation,
+                                enabled: _includeTranslation &&
+                                    _outputFormat == 'HTML',
                                 helpText:
                                     'Character count above which translation switches to inline mode.',
                                 onChanged: (v) => setState(() =>
@@ -786,12 +892,15 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                       title: const Text('Justify translation text'),
                       value: _justifyTranslation,
                       contentPadding: EdgeInsets.zero,
-                      onChanged: (val) {
-                        setState(() {
-                          _justifyTranslation = val;
-                          _saveSettings();
-                        });
-                      },
+                      onChanged:
+                          (_includeTranslation && _outputFormat == 'HTML')
+                              ? (val) {
+                                  setState(() {
+                                    _justifyTranslation = val;
+                                    _saveSettings();
+                                  });
+                                }
+                              : null,
                     ),
                     const SizedBox(height: 16),
                     const Divider(),
@@ -992,6 +1101,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'TOC Font (px)',
                                 value: _selectedPageSize.tocFontSize,
+                                enabled: _outputFormat == 'HTML',
                                 helpText:
                                     'Font size for the Table of Contents entries.',
                                 onChanged: (v) => setState(() =>
@@ -1002,6 +1112,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildNumberInput(
                                 label: 'TOC Entries/Page',
                                 value: _selectedPageSize.tocEntriesPerPage,
+                                enabled: _outputFormat == 'HTML',
                                 helpText:
                                     'Number of Surah entries to display per page in the Table of Contents.',
                                 onChanged: (v) => setState(() =>
@@ -1019,6 +1130,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildTextInput(
                                 label: 'Cover Title',
                                 value: _selectedPageSize.textConfig.coverTitle,
+                                enabled: _outputFormat == 'HTML',
                                 helpText: 'Main title on the cover page.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
@@ -1032,6 +1144,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Cover Subtitle',
                                 value: _selectedPageSize
                                     .textConfig.coverSubtitle,
+                                enabled: _outputFormat == 'HTML',
                                 helpText: 'Subtitle on the cover page.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
@@ -1047,6 +1160,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildTextInput(
                                 label: 'TOC Title',
                                 value: _selectedPageSize.textConfig.tocTitle,
+                                enabled: _outputFormat == 'HTML',
                                 helpText: 'Title for the Table of Contents.',
                                 onChanged: (v) => setState(() =>
                                     _selectedPageSize =
@@ -1060,6 +1174,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Blank Page Text',
                                 value: _selectedPageSize
                                     .textConfig.blankPageText,
+                                enabled: _outputFormat == 'HTML',
                                 helpText:
                                     'Text displayed on the intentionally blank page.',
                                 onChanged: (v) => setState(() =>
@@ -1077,6 +1192,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                                 label: 'Translation Label',
                                 value: _selectedPageSize
                                     .textConfig.translationLabel,
+                                enabled: _outputFormat == 'HTML',
                                 helpText:
                                     'Label for the translation on the cover page.',
                                 onChanged: (v) => setState(() =>
@@ -1091,6 +1207,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                             child: _buildTextInput(
                                 label: 'WBW Label',
                                 value: _selectedPageSize.textConfig.wbwLabel,
+                                enabled: _outputFormat == 'HTML',
                                 helpText:
                                     'Label for the word-by-word translation on the cover page.',
                                 onChanged: (v) => setState(() =>
@@ -1105,8 +1222,6 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-
             const SizedBox(height: 16),
 
             // Page Range & Preview Controls
@@ -1190,7 +1305,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.file_download),
-                label: Text(_isGenerating ? 'Generating...' : 'Generate HTML'),
+                label: Text(_isGenerating ? 'Generating...' : 'Generate'),
                 style: ElevatedButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
@@ -1246,7 +1361,9 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                           const Icon(Icons.check_circle, color: Colors.green),
                           const SizedBox(width: 8),
                           Text(
-                            'HTML Generated Successfully!',
+                            _outputFormat == 'HTML'
+                                ? 'HTML Generated Successfully!'
+                                : 'Images Generated Successfully!',
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
@@ -1346,62 +1463,9 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
       await dbReader.open();
 
       setState(() {
-        _statusMessage = 'Generating HTML...';
-      });
-
-      // Get selected translation name and language for cover page and surah headers
-      String? translationName;
-      String? translationLanguage;
-      if (_includeTranslation && _selectedTranslationKey != null) {
-        try {
-          final info = _availableTranslations.firstWhere(
-            (t) => t.key == _selectedTranslationKey,
-          );
-          translationName = '${info.name} (${info.language})';
-          translationLanguage = info.language.toLowerCase();
-        } catch (_) {
-          translationName = _selectedTranslationKey;
-          translationLanguage = 'en'; // fallback to English
-        }
-      }
-
-      // Generate HTML using margins preset for selected PageSize
-      final generator = MushafHtmlGenerator(
-        dbReader,
-        pageSize: _selectedPageSize,
-        prefaceBlankPages: _prefaceBlankPages,
-        coverBackgroundColor: _coverBackgroundColor,
-        justifyTranslation: _justifyTranslation,
-        includeTranslation: _includeTranslation,
-        includeWbw: _includeWbw,
-        wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,
-        wbwLanguageName: _includeWbw
-            ? MushafWbwService.getLanguageName(_selectedWbwLanguage)
-            : null,
-        translationKey: _selectedTranslationKey,
-        translationName: translationName,
-        translationLanguage: translationLanguage,
-        translationService: _includeTranslation ? _translationService : null,
-        localTranslationService:
-            _includeTranslation ? _localTranslationService : null,
-      );
-      final html = await generator.generateHtml(
-        startPage: start,
-        endPage: end,
-        onProgress: (current, total) {
-          setState(() {
-            _currentPage = current;
-            _totalPages = total;
-            _statusMessage = 'Processing page $current of $total...';
-          });
-        },
-      );
-
-      // Close database
-      await dbReader.close();
-
-      setState(() {
-        _statusMessage = 'Saving file...';
+        _statusMessage = _outputFormat == 'HTML'
+            ? 'Generating HTML...'
+            : 'Generating PNGs...';
       });
 
       // Save to documents directory
@@ -1412,22 +1476,117 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
       }
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final prefix = isPreview
-          ? 'preview_page_${start}'
-          : 'mushaf_${_selectedPageSize.name}_pages_${start}_to_${end}';
-      final fileName = '${prefix}_$timestamp.html';
-      final outputFile = File('${mushafDir.path}/$fileName');
-      await outputFile.writeAsString(html);
+      String? outputFile;
+
+      if (_outputFormat == 'HTML') {
+        // Get selected translation name and language for cover page and surah headers
+        String? translationName;
+        String? translationLanguage;
+        if (_includeTranslation && _selectedTranslationKey != null) {
+          try {
+            final info = _availableTranslations.firstWhere(
+              (t) => t.key == _selectedTranslationKey,
+            );
+            translationName = '${info.name} (${info.language})';
+            translationLanguage = info.language.toLowerCase();
+          } catch (_) {
+            translationName = _selectedTranslationKey;
+            translationLanguage = 'en'; // fallback to English
+          }
+        }
+
+        // Generate HTML using margins preset for selected PageSize
+        final generator = MushafHtmlGenerator(
+          dbReader,
+          pageSize: _selectedPageSize,
+          prefaceBlankPages: _prefaceBlankPages,
+          coverBackgroundColor: _coverBackgroundColor,
+          justifyTranslation: _justifyTranslation,
+          includeTranslation: _includeTranslation,
+          includeWbw: _includeWbw,
+          wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,
+          wbwLanguageName: _includeWbw
+              ? MushafWbwService.getLanguageName(_selectedWbwLanguage)
+              : null,
+          translationKey: _selectedTranslationKey,
+          translationName: translationName,
+          translationLanguage: translationLanguage,
+          translationService: _includeTranslation ? _translationService : null,
+          localTranslationService:
+              _includeTranslation ? _localTranslationService : null,
+        );
+        final html = await generator.generateHtml(
+          startPage: start,
+          endPage: end,
+          onProgress: (current, total) {
+            setState(() {
+              _currentPage = current;
+              _totalPages = total;
+              _statusMessage = 'Processing page $current of $total...';
+            });
+          },
+        );
+
+        setState(() {
+          _statusMessage = 'Saving file...';
+        });
+
+        final prefix = isPreview
+            ? 'preview_page_${start}'
+            : 'mushaf_${_selectedPageSize.name}_pages_${start}_to_${end}';
+        final fileName = '${prefix}_$timestamp.html';
+        final file = File('${mushafDir.path}/$fileName');
+        await file.writeAsString(html);
+        outputFile = file.path;
+      } else {
+        // Generate PNGs
+        final prefix = isPreview
+            ? 'preview_image_${start}'
+            : 'mushaf_${_selectedPageSize.name}_batch_${start}_to_${end}';
+        final batchFolderName = '${prefix}_$timestamp';
+        final batchDir = Directory('${mushafDir.path}/$batchFolderName');
+
+        final generator = MushafImageGenerator(
+          dbReader,
+          pageSize: _selectedPageSize,
+          dpi: _dpi,
+          includeWbw: _includeWbw,
+          wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,
+          showDecorations: _showDecorations,
+        );
+
+        await generator.generateImages(
+          startPage: start,
+          endPage: end,
+          outputDir: batchDir.path,
+          onProgress: (current, total) {
+            setState(() {
+              _currentPage = current;
+              _totalPages = total;
+              _statusMessage = 'Rendering image $current of $total...';
+            });
+          },
+        );
+        outputFile = batchDir.path;
+      }
+
+      // Close database
+      await dbReader.close();
 
       setState(() {
         _isGenerating = false;
         _statusMessage = 'Completed successfully!';
-        _outputPath = outputFile.path;
+        _outputPath = outputFile;
       });
 
-      // Open the generated file in browser
-      _openFileInBrowser(outputFile.path);
+      // Open the generated file/folder in browser
+      if (_outputFormat == 'HTML') {
+        _openFileInBrowser(outputFile);
+      } else {
+        _openOutputFolder();
+      }
     } catch (e) {
+      debugPrint('Generation Error: $e');
       setState(() {
         _isGenerating = false;
         _statusMessage = 'Error: $e';
@@ -1448,11 +1607,17 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   void _openOutputFolder() {
     if (_outputPath == null) return;
 
-    final file = File(_outputPath!);
-    final folder = file.parent.path;
+    final folder = FileSystemEntity.isDirectorySync(_outputPath!)
+        ? _outputPath!
+        : File(_outputPath!).parent.path;
 
-    // Open folder in system file manager (macOS)
-    Process.run('open', [folder]);
+    if (Platform.isMacOS) {
+      Process.run('open', [folder]);
+    } else if (Platform.isWindows) {
+      Process.run('explorer.exe', [folder]);
+    } else if (Platform.isLinux) {
+      Process.run('xdg-open', [folder]);
+    }
   }
 }
 
