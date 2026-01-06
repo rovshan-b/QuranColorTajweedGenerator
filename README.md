@@ -48,7 +48,7 @@ Users are **solely responsible** for verifying the final output, including but n
 
   - **Sizes**: Presets for A3, A4, B5, A5, and fully custom dimensions.
   - **Margins**: Configurable gutter margins for RTL book binding (odd/even page alternation).
-  - **Centering**: Smart vertical alignment that keeps content centered or top-aligned.
+  - **Centering**: Smart vertical alignment that keeps content centered within the available space.
 
 - **PNG Export Features**:
 

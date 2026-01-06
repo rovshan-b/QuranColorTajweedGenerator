@@ -145,24 +145,14 @@ class MushafImageGenerator {
     double availableHeight =
         pxHeight - topPx - headerHeight - bottomPx - legendHeight;
     double verticalOffset = 0;
-
-    if (showDecorations) {
-      if (availableHeight > totalContentHeight) {
-        verticalOffset = (availableHeight - totalContentHeight) / 2;
-      } else if (totalContentHeight > availableHeight) {
-        // Content overflow warning
-        print('WARNING: Page $pageNum content overflow! '
-            'Content height: ${totalContentHeight.toStringAsFixed(1)}px, '
-            'Available height: ${availableHeight.toStringAsFixed(1)}px. '
-            'Consider reducing font size or adjusting page dimensions.');
-      }
-    } else {
-      // No decorations: just check for overflow relative to full page height minus margins
-      if (totalContentHeight > availableHeight) {
-        print('WARNING: Page $pageNum content overflow! '
-            'Content height: ${totalContentHeight.toStringAsFixed(1)}px, '
-            'Available height: ${availableHeight.toStringAsFixed(1)}px.');
-      }
+    if (availableHeight > totalContentHeight) {
+      verticalOffset = (availableHeight - totalContentHeight) / 2;
+    } else if (totalContentHeight > availableHeight) {
+      // Content overflow warning
+      print('WARNING: Page $pageNum content overflow! '
+          'Content height: ${totalContentHeight.toStringAsFixed(1)}px, '
+          'Available height: ${availableHeight.toStringAsFixed(1)}px. '
+          'Consider reducing font size or adjusting page dimensions.');
     }
 
     // 3. Draw Page Header (if enabled)
@@ -173,6 +163,7 @@ class MushafImageGenerator {
 
     // 4. Draw Content starting at offset position
     double currentY = topPx + headerHeight + verticalOffset;
+    int shrunkAyasCount = 0;
 
     for (final line in lines) {
       if (line.lineType == 'surah_name') {
@@ -182,8 +173,10 @@ class MushafImageGenerator {
         currentY = await _drawBasmallah(
             canvas, line, pxWidth, currentY, leftPadding, drawWidth);
       } else if (line.lineType == 'ayah') {
-        currentY = await _drawAyahLine(canvas, line, pageNum, pxWidth, currentY,
-            leftPadding, drawWidth, db);
+        final result = await _drawAyahLine(canvas, line, pageNum, pxWidth,
+            currentY, leftPadding, drawWidth, db, shrunkAyasCount);
+        currentY = result.nextY;
+        if (result.wasShrunk) shrunkAyasCount++;
       }
     }
 
@@ -397,7 +390,7 @@ class MushafImageGenerator {
     return y + textPainter.height + (10 * scale);
   }
 
-  Future<double> _drawAyahLine(
+  Future<_AyahLineResult> _drawAyahLine(
       ui.Canvas canvas,
       MushafLine line,
       int pageNum,
@@ -405,75 +398,110 @@ class MushafImageGenerator {
       double y,
       double leftPadding,
       double drawWidth,
-      Database db) async {
+      Database db,
+      int shrunkAyasCount) async {
     final words = await _dbReader.getWords(line.firstWordId!, line.lastWordId!);
     final arabicScale = includeWbw ? pageSize.wbwArabicScale : 1.0;
-    final fontSize = pageSize.fontSize * scale * arabicScale;
+    double currentFontSize = pageSize.fontSize * scale * arabicScale;
+    bool wasShrunk = false;
 
     // 1. Prepare elements for manual layout
-    final elements = <_AyahLineElement>[];
+    List<_AyahLineElement> elements = [];
     double totalElementsWidth = 0;
-    int currentPositionInLine = 1;
 
-    for (final word in words) {
-      TextPainter painter;
-      bool trackInDb = false;
+    void measure() {
+      elements = [];
+      totalElementsWidth = 0;
+      int currentPositionInLine = 1;
 
-      if (word.isAyaNumber) {
-        painter = TextPainter(
-          text: TextSpan(
-            text: '\u06DD${word.text}', // No trailing space here
-            style: TextStyle(
-              fontFamily: 'Kitab',
-              fontSize: fontSize,
-              color: Colors.black,
+      for (final word in words) {
+        TextPainter painter;
+        bool trackInDb = false;
+
+        if (word.isAyaNumber) {
+          painter = TextPainter(
+            text: TextSpan(
+              text: '\u06DD${word.text}', // No trailing space here
+              style: TextStyle(
+                fontFamily: 'Kitab',
+                fontSize: currentFontSize,
+                color: Colors.black,
+              ),
             ),
-          ),
-          textDirection: TextDirection.rtl,
-        );
-      } else {
-        final tajweedWord = _wordMapper.mapWordToTokens(word);
-        if (tajweedWord == null) continue;
+            textDirection: TextDirection.rtl,
+          );
+        } else {
+          final tajweedWord = _wordMapper.mapWordToTokens(word);
+          if (tajweedWord == null) continue;
 
-        final spans = <TextSpan>[];
-        for (final token in tajweedWord.tokens) {
-          final color = Color(int.parse(
-              tajweedRuleToHex(token.rule).replaceFirst('#', '0xFF')));
-          spans.add(TextSpan(
-            text: token.text,
-            style: TextStyle(
-              fontFamily: 'Kitab',
-              fontSize: fontSize,
-              color: color,
-            ),
-          ));
+          final spans = <TextSpan>[];
+          for (final token in tajweedWord.tokens) {
+            final color = Color(int.parse(
+                tajweedRuleToHex(token.rule).replaceFirst('#', '0xFF')));
+            spans.add(TextSpan(
+              text: token.text,
+              style: TextStyle(
+                fontFamily: 'Kitab',
+                fontSize: currentFontSize,
+                color: color,
+              ),
+            ));
+          }
+
+          painter = TextPainter(
+            text: TextSpan(children: spans),
+            textDirection: TextDirection.rtl,
+          );
+          trackInDb = true;
         }
 
-        painter = TextPainter(
-          text: TextSpan(children: spans),
-          textDirection: TextDirection.rtl,
-        );
-        trackInDb = true;
+        painter.layout();
+        elements.add(_AyahLineElement(
+          painter: painter,
+          word: trackInDb ? word : null,
+          position: trackInDb ? currentPositionInLine++ : 0,
+        ));
+        totalElementsWidth += painter.width;
       }
-
-      painter.layout();
-      elements.add(_AyahLineElement(
-        painter: painter,
-        word: trackInDb ? word : null,
-        position: trackInDb ? currentPositionInLine++ : 0,
-      ));
-      totalElementsWidth += painter.width;
     }
 
-    if (elements.isEmpty) return y;
+    // Initial measurement
+    measure();
 
-    // 2. Calculate Spacing
+    // 2. Check for overlap and attempt shrinking if permitted
+    if (totalElementsWidth > drawWidth && !line.isCentered) {
+      if (shrunkAyasCount < 5) {
+        final double originalWidth = totalElementsWidth;
+        while (totalElementsWidth > drawWidth && currentFontSize > 5) {
+          currentFontSize -= 0.2;
+          measure();
+        }
+        wasShrunk = true;
+        print(
+            'INFO: Page $pageNum Line ${line.lineNumber} shrunk: ${originalWidth.toStringAsFixed(1)}px -> ${totalElementsWidth.toStringAsFixed(1)}px (Font: ${currentFontSize.toStringAsFixed(1)})');
+      } else {
+        print('WARNING: Page $pageNum Line ${line.lineNumber} word overlap! '
+            'Total word width: ${totalElementsWidth.toStringAsFixed(1)}px exceeds line width: ${drawWidth.toStringAsFixed(1)}px. '
+            'Skipping shrink process (limit of 5 exceeded).');
+      }
+    }
+
+    if (elements.isEmpty) return _AyahLineResult(nextY: y, wasShrunk: false);
+
+    // 3. Calculate Spacing
     double gap = 0;
     double currentX = 0;
 
     if (line.isCentered) {
-      gap = fontSize * 0.25; // Standard space for centered lines
+      gap = currentFontSize * 0.25; // Standard space for centered lines
       final totalWidth = totalElementsWidth + (gap * (elements.length - 1));
+
+      if (totalWidth > drawWidth) {
+        print(
+            'WARNING: Page $pageNum Line ${line.lineNumber} centered overflow! '
+            'Width: ${totalWidth.toStringAsFixed(1)}px, Available: ${drawWidth.toStringAsFixed(1)}px');
+      }
+
       // RTL: Start at leftPadding + (drawWidth - totalWidth) / 2
       // But we render from Right to Left!
       // Start X coord for the FIRST word (which is the rightmost in RTL)
@@ -484,9 +512,14 @@ class MushafImageGenerator {
         gap = (drawWidth - totalElementsWidth) / (elements.length - 1);
       }
       currentX = leftPadding + drawWidth; // Start at the right edge
+
+      if (gap < -0.01 && !wasShrunk) {
+        print('WARNING: Page $pageNum Line ${line.lineNumber} word overlap! '
+            'Total word width: ${totalElementsWidth.toStringAsFixed(1)}px exceeds line width: ${drawWidth.toStringAsFixed(1)}px');
+      }
     }
 
-    // 3. Render and Record
+    // 4. Render and Record
     final batch = db.batch();
     double maxHeight = 0;
 
@@ -530,10 +563,11 @@ class MushafImageGenerator {
 
     await batch.commit(noResult: true);
 
-    if (includeWbw) {
-      return y + maxHeight * pageSize.wbwArabicLineHeight;
-    }
-    return y + maxHeight * pageSize.lineHeight;
+    double nextY = includeWbw
+        ? y + maxHeight * pageSize.wbwArabicLineHeight
+        : y + maxHeight * pageSize.lineHeight;
+
+    return _AyahLineResult(nextY: nextY, wasShrunk: wasShrunk);
   }
 
   double _drawWbwUnderWord(ui.Canvas canvas, MushafWord word, double minX,
@@ -667,4 +701,12 @@ class _AyahLineElement {
     this.word,
     required this.position,
   });
+}
+
+/// Helper to track results of ayah line rendering
+class _AyahLineResult {
+  final double nextY;
+  final bool wasShrunk;
+
+  _AyahLineResult({required this.nextY, required this.wasShrunk});
 }
