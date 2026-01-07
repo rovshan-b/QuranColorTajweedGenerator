@@ -22,6 +22,8 @@ class MushafImageGenerator {
   final bool includeWbw;
   final String? wbwLanguage;
   final bool showDecorations;
+  final String baseTextColor;
+  late final ui.Color _baseColor;
 
   MushafImageGenerator(
     this._dbReader, {
@@ -30,9 +32,12 @@ class MushafImageGenerator {
     this.includeWbw = false,
     this.wbwLanguage,
     this.showDecorations = true,
+    this.baseTextColor = '#000000',
   })  : _wordMapper = MushafWordMapper(),
         _wbwService = MushafWbwService(),
-        scale = dpi / 96.0;
+        scale = dpi / 96.0 {
+    _baseColor = ui.Color(int.parse(baseTextColor.replaceFirst('#', '0xFF')));
+  }
 
   Future<void> generateImages({
     required int startPage,
@@ -270,7 +275,7 @@ class MushafImageGenerator {
     final style = TextStyle(
       fontFamily: 'Kitab',
       fontSize: headerFontSize,
-      color: Colors.grey[700],
+      color: _baseColor,
     );
 
     // 1. Draw Page Number (Center)
@@ -314,7 +319,7 @@ class MushafImageGenerator {
 
     // Draw thin line under header
     final linePaint = ui.Paint()
-      ..color = Colors.grey[300]!
+      ..color = _baseColor.withOpacity(0.2)
       ..strokeWidth = 1 * scale;
     canvas.drawLine(
       ui.Offset(leftPadding, y + centerPainter.height + 5 * scale),
@@ -378,7 +383,7 @@ class MushafImageGenerator {
         style: TextStyle(
           fontFamily: 'Kitab',
           fontSize: fontSize,
-          color: Colors.black,
+          color: _baseColor,
         ),
       ),
       textDirection: TextDirection.rtl,
@@ -425,7 +430,7 @@ class MushafImageGenerator {
               style: TextStyle(
                 fontFamily: 'Kitab',
                 fontSize: currentFontSize,
-                color: Colors.black,
+                color: _baseColor,
               ),
             ),
             textDirection: TextDirection.rtl,
@@ -436,8 +441,10 @@ class MushafImageGenerator {
 
           final spans = <TextSpan>[];
           for (final token in tajweedWord.tokens) {
-            final color = Color(int.parse(
-                tajweedRuleToHex(token.rule).replaceFirst('#', '0xFF')));
+            final color = token.rule == TajweedRule.none
+                ? _baseColor
+                : Color(int.parse(
+                    tajweedRuleToHex(token.rule).replaceFirst('#', '0xFF')));
             spans.add(TextSpan(
               text: token.text,
               style: TextStyle(
@@ -583,7 +590,7 @@ class MushafImageGenerator {
         style: TextStyle(
           fontFamily: 'sans-serif',
           fontSize: wbwFontSize,
-          color: Colors.grey[700],
+          color: _baseColor,
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -631,7 +638,7 @@ class MushafImageGenerator {
 
     // Draw thin line above legend
     final linePaint = ui.Paint()
-      ..color = Colors.grey[300]!
+      ..color = _baseColor.withOpacity(0.2)
       ..strokeWidth = 1 * scale;
     canvas.drawLine(
       ui.Offset(leftPadding, legendY),
@@ -654,7 +661,7 @@ class MushafImageGenerator {
           style: TextStyle(
             fontFamily: 'sans-serif',
             fontSize: legendFontSize,
-            color: Colors.grey[800],
+            color: _baseColor,
           ),
         ),
         textDirection: TextDirection.ltr,

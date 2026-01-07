@@ -1,0 +1,9 @@
+brew install cwebp
+
+#lossless
+for f in *.png; do cwebp -lossless -z 9 "$f" -o "${f%.png}.webp"; done
+
+#90% - still high quality
+for f in *.png; do cwebp -q 90 -m 6 "$f" -o "${f%.png}.webp"; done
+
+rm *.png

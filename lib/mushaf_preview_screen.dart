@@ -55,6 +55,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   String _outputFormat = 'HTML'; // 'HTML' or 'PNG'
   int _dpi = 300;
   bool _showDecorations = true;
+  String _baseTextColor = '#000000';
 
   // Cover & Layout settings
   int _prefaceBlankPages = 1;
@@ -116,6 +117,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     _outputFormat = _prefs.getString('output_format') ?? 'HTML';
     _dpi = _prefs.getInt('dpi') ?? 300;
     _showDecorations = _prefs.getBool('show_decorations') ?? true;
+    _baseTextColor = _prefs.getString('base_text_color') ?? '#000000';
   }
 
   Future<void> _saveSettings() async {
@@ -138,6 +140,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     await _prefs.setString('output_format', _outputFormat);
     await _prefs.setInt('dpi', _dpi);
     await _prefs.setBool('show_decorations', _showDecorations);
+    await _prefs.setString('base_text_color', _baseTextColor);
   }
 
   Future<void> _showSavePresetDialog() async {
@@ -394,22 +397,6 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                         ),
                       ],
                     ),
-                    if (_outputFormat == 'PNG') ...[
-                      const SizedBox(height: 8),
-                      SwitchListTile(
-                        title: const Text('Show Page Header & Legend'),
-                        subtitle: const Text(
-                            'Includes surah name, page number, juz and tajweed color key'),
-                        value: _showDecorations,
-                        contentPadding: EdgeInsets.zero,
-                        onChanged: (val) {
-                          setState(() {
-                            _showDecorations = val;
-                            _saveSettings();
-                          });
-                        },
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -619,6 +606,44 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                         ],
                       ],
                     ),
+                    if (_outputFormat == 'PNG') ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildTextInput(
+                              label: 'Base Text Color (Hex)',
+                              value: _baseTextColor,
+                              helpText:
+                                  'Text color for all non-colored text (e.g. #FFFFFF for White, #000000 for Black). Works in PNG mode.',
+                              onChanged: (val) {
+                                setState(() {
+                                  _baseTextColor = val;
+                                  _saveSettings();
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Spacer(),
+                          const SizedBox(width: 12),
+                          const Spacer(),
+                        ],
+                      ),
+                      SwitchListTile(
+                        title: const Text('Show Page Header & Legend'),
+                        subtitle: const Text(
+                            'Includes surah name, page number, juz and tajweed color key'),
+                        value: _showDecorations,
+                        contentPadding: EdgeInsets.zero,
+                        onChanged: (val) {
+                          setState(() {
+                            _showDecorations = val;
+                            _saveSettings();
+                          });
+                        },
+                      ),
+                    ],
                     const Divider(),
                     const Text('Arabic Typography',
                         style: TextStyle(fontWeight: FontWeight.bold)),
@@ -1553,6 +1578,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
           includeWbw: _includeWbw,
           wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,
           showDecorations: _showDecorations,
+          baseTextColor: _baseTextColor,
         );
 
         await generator.generateImages(
