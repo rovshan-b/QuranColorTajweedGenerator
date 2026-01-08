@@ -148,7 +148,7 @@ class GeneralLabelsTab extends StatelessWidget {
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'These labels are used throughout the generated PDF and cover page.',
+                          'These labels are used throughout the generated HTML and cover page.',
                           style:
                               TextStyle(fontSize: 13, color: Colors.blueGrey),
                         ),

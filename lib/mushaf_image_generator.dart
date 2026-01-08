@@ -22,6 +22,7 @@ class MushafImageGenerator {
   final bool includeWbw;
   final String? wbwLanguage;
   final bool showDecorations;
+  final bool startOnRightSide;
   final String baseTextColor;
   final Map<TajweedRule, String>? tajweedColors;
   final Map<TajweedRule, bool>? tajweedHighlighting;
@@ -34,6 +35,7 @@ class MushafImageGenerator {
     this.includeWbw = false,
     this.wbwLanguage,
     this.showDecorations = true,
+    this.startOnRightSide = true,
     this.baseTextColor = '#000000',
     this.tajweedColors,
     this.tajweedHighlighting,
@@ -127,14 +129,13 @@ class MushafImageGenerator {
     final outerPx = (margins.outerMm / 25.4 * dpi);
     final gutterPx = (margins.gutterMm / 25.4 * dpi);
 
-    // RTL Parity Logic:
-    // Odd (Right Page): Gutter on Right, Outer on Left.
-    // Even (Left Page): Gutter on Left, Outer on Right.
-    // We assume Page 1 is Odd/Right.
-    final isOdd = pageNum.isOdd;
+    // Determine side (Right/Left) based on startOnRightSide setting
+    final bool isRightSide = startOnRightSide ? pageNum.isOdd : pageNum.isEven;
 
-    final leftPadding = isOdd ? outerPx : gutterPx;
-    final rightPadding = isOdd ? gutterPx : outerPx;
+    // For Right Page: Gutter on LEFT, Outer on RIGHT.
+    // For Left Page: Gutter on RIGHT, Outer on LEFT.
+    final leftPadding = isRightSide ? gutterPx : outerPx;
+    final rightPadding = isRightSide ? outerPx : gutterPx;
     final drawWidth = pxWidth - leftPadding - rightPadding;
 
     // We start drawing from top margin

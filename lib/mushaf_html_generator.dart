@@ -28,6 +28,7 @@ class MushafHtmlGenerator {
   final String? translationLanguage;
   final String? wbwLanguageName;
   final int prefaceBlankPages;
+  final bool startOnRightSide;
   final String coverBackgroundColor;
   final String baseTextColor;
   final Map<TajweedRule, String>? tajweedColors;
@@ -63,6 +64,7 @@ class MushafHtmlGenerator {
     this.translationLanguage,
     this.wbwLanguageName,
     this.prefaceBlankPages = 1,
+    this.startOnRightSide = true,
     this.coverBackgroundColor = '#1a472a',
     this.baseTextColor = '#000000',
     this.tajweedColors,
@@ -144,23 +146,22 @@ class MushafHtmlGenerator {
     // Add configured number of empty pages after cover
     // Physical page starts at 2 (1 is cover)
     for (int i = 0; i < prefaceBlankPages; i++) {
-      buffer.writeln(_generateEmptyPage(physicalPageNumber: 2 + i));
+      buffer.writeln(_generateEmptyPage());
     }
 
     // Generate content for each page
     for (int pageNum = startPage; pageNum <= endPage; pageNum++) {
       onProgress?.call(pageNum - startPage + 1, endPage - startPage + 1);
-      final pageHtml =
-          await _generatePageHtml(pageNum, prefacePages: prefaceBlankPages);
+      final pageHtml = await _generatePageHtml(pageNum);
       buffer.writeln(pageHtml);
     }
 
     // Generate Table of Contents at the end
     final int contentPagesCount = endPage - startPage + 1;
-    // Cover (1) + Blank Pages (N) + Content (C) + 1 (Next)
-    final int tocStartPhysicalPage = contentPagesCount + prefaceBlankPages + 2;
-    final tocResult =
-        await _generateTableOfContents(startPhysicalPage: tocStartPhysicalPage);
+    // Continuation parity: TOC starts after contentPagesCount
+    final tocResult = await _generateTableOfContents(
+      startSequenceIndex: contentPagesCount + 1,
+    );
     buffer.writeln(tocResult['html']);
 
     // Write HTML footer
@@ -644,10 +645,9 @@ class MushafHtmlGenerator {
 ''';
   }
 
-  String _generateEmptyPage({required int physicalPageNumber}) {
-    final pageClass = physicalPageNumber.isOdd ? 'page-odd' : 'page-even';
+  String _generateEmptyPage() {
     return '''
-<div class="page $pageClass">
+<div class="page">
   <div class="page-content" style="display: flex; justify-content: center; align-items: center; height: 100%;">
     <div style="text-align: center; color: #bbb; font-family: sans-serif; font-size: 14px;">
       <p dir="rtl" style="margin-bottom: 8px;">هذه الصفحة تركت فارغة عمداً</p>
@@ -657,8 +657,7 @@ class MushafHtmlGenerator {
 </div>''';
   }
 
-  Future<String> _generatePageHtml(int pageNumber,
-      {int prefacePages = 0}) async {
+  Future<String> _generatePageHtml(int pageNumber) async {
     final buffer = StringBuffer();
     final lines = await _dbReader.getPageLines(pageNumber);
 
@@ -695,9 +694,10 @@ class MushafHtmlGenerator {
         : '';
 
     // Determine odd/even class for RTL book margins
-    // Account for cover and any preface pages (TOC): physical page = pageNumber + 1 + prefacePages
-    final physicalPageNumber = pageNumber + 1 + prefacePages;
-    final pageClass = physicalPageNumber.isOdd ? 'page-odd' : 'page-even';
+    // Parity depends ONLY on Mushaf pageNumber and startOnRightSide toggle.
+    // This ensures Mushaf Page 1 is always on the preferred side regardless of preface.
+    final bool isRight = (pageNumber.isOdd == startOnRightSide);
+    final pageClass = isRight ? 'page-odd' : 'page-even';
 
     // Buffers for Arabic content and translation tracking
     final arabicBuffer = StringBuffer();
@@ -925,7 +925,7 @@ class MushafHtmlGenerator {
   /// Table of Contents placed after the cover page.
   /// Returns a map with keys: 'html' (String) and 'pages' (int pages used).
   Future<Map<String, dynamic>> _generateTableOfContents(
-      {int startPhysicalPage = 2}) async {
+      {int startSequenceIndex = 1}) async {
     // Map surahNumber -> first page where its header appears
     final Map<int, int> surahPageMap = {};
 
@@ -964,10 +964,11 @@ class MushafHtmlGenerator {
           entries.sublist(i, (i + entriesPerPage).clamp(0, entries.length));
 
       final buffer = StringBuffer();
-      // Determine parity based on physical page number
+      // Determine parity based on physical page number and global config
       final int currentPageIndex = i ~/ entriesPerPage;
-      final int physicalPageNumber = startPhysicalPage + currentPageIndex;
-      final pageClass = physicalPageNumber.isOdd ? 'page-odd' : 'page-even';
+      final int sequenceIndex = startSequenceIndex + currentPageIndex;
+      final bool isRight = (sequenceIndex.isOdd == startOnRightSide);
+      final pageClass = isRight ? 'page-odd' : 'page-even';
 
       buffer.writeln('<div class="page $pageClass">');
       buffer.writeln('<div class="page-content">');

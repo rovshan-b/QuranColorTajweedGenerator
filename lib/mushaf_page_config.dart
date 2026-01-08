@@ -140,6 +140,9 @@ class PageSize {
   /// Character count threshold to switch to compact translation mode.
   final int translationCompactThreshold;
 
+  /// Whether the first Mushaf page starts on the right side of the book.
+  final bool startOnRightSide;
+
   const PageSize({
     required this.name,
     required this.widthMm,
@@ -169,6 +172,7 @@ class PageSize {
     required this.margins,
     required this.tocEntriesPerPage,
     required this.translationCompactThreshold,
+    this.startOnRightSide = true,
   });
 
   static const PageSize a3 = PageSize(
@@ -199,6 +203,7 @@ class PageSize {
     wordSpacing: -0.35,
     tocEntriesPerPage: 27,
     translationCompactThreshold: 3000,
+    startOnRightSide: true,
     margins: BookMargins(
       gutterMm: 26.0,
       outerMm: 26.0,
@@ -235,6 +240,7 @@ class PageSize {
     wordSpacing: -0.35,
     tocEntriesPerPage: 21,
     translationCompactThreshold: 1600,
+    startOnRightSide: true,
     margins: BookMargins(
       gutterMm: 26.0,
       outerMm: 26.0,
@@ -271,6 +277,7 @@ class PageSize {
     wordSpacing: -0.3,
     tocEntriesPerPage: 19,
     translationCompactThreshold: 800,
+    startOnRightSide: true,
     margins: BookMargins(
       gutterMm: 26.0,
       outerMm: 26.0,
@@ -307,6 +314,7 @@ class PageSize {
     wordSpacing: -0.5,
     tocEntriesPerPage: 16,
     translationCompactThreshold: 1000,
+    startOnRightSide: true,
     margins: BookMargins(
       gutterMm: 26.0,
       outerMm: 26.0,
@@ -346,6 +354,7 @@ class PageSize {
     BookMargins? margins,
     int? tocEntriesPerPage,
     int? translationCompactThreshold,
+    bool? startOnRightSide,
   }) {
     return PageSize(
       name: name ?? this.name,
@@ -381,6 +390,7 @@ class PageSize {
       tocEntriesPerPage: tocEntriesPerPage ?? this.tocEntriesPerPage,
       translationCompactThreshold:
           translationCompactThreshold ?? this.translationCompactThreshold,
+      startOnRightSide: startOnRightSide ?? this.startOnRightSide,
     );
   }
 
@@ -413,6 +423,7 @@ class PageSize {
         'margins': margins.toJson(),
         'tocEntriesPerPage': tocEntriesPerPage,
         'translationCompactThreshold': translationCompactThreshold,
+        'startOnRightSide': startOnRightSide,
       };
 
   factory PageSize.fromJson(Map<String, dynamic> json) => PageSize(
@@ -448,6 +459,7 @@ class PageSize {
         margins: BookMargins.fromJson(json['margins'] as Map<String, dynamic>),
         tocEntriesPerPage: json['tocEntriesPerPage'] as int,
         translationCompactThreshold: json['translationCompactThreshold'] as int,
+        startOnRightSide: json['startOnRightSide'] as bool? ?? true,
       );
 
   /// Calculates adjusted translation font size based on text length.

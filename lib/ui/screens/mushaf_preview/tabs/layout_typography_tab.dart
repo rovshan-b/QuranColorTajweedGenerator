@@ -7,11 +7,13 @@ class LayoutTypographyTab extends StatelessWidget {
   final PageSize selectedPageSize;
   final String outputFormat;
   final int prefaceBlankPages;
+  final bool startOnRightSide;
   final int dpi;
   final bool showDecorations;
 
   final Function(PageSize) onPageSizeChanged;
   final Function(int) onPrefaceBlankPagesChanged;
+  final Function(bool) onStartOnRightSideChanged;
   final Function(int) onDpiChanged;
   final Function(bool) onShowDecorationsChanged;
   final Function(String, String) onShowHelp;
@@ -21,10 +23,12 @@ class LayoutTypographyTab extends StatelessWidget {
     required this.selectedPageSize,
     required this.outputFormat,
     required this.prefaceBlankPages,
+    required this.startOnRightSide,
     required this.dpi,
     required this.showDecorations,
     required this.onPageSizeChanged,
     required this.onPrefaceBlankPagesChanged,
+    required this.onStartOnRightSideChanged,
     required this.onDpiChanged,
     required this.onShowDecorationsChanged,
     required this.onShowHelp,
@@ -286,6 +290,14 @@ class LayoutTypographyTab extends StatelessWidget {
                             onChanged: (v) => onDpiChanged(v.toInt()))),
                   ],
                 ],
+              ),
+              SwitchListTile(
+                title: const Text('Start Mushaf Page 1 on Right Side'),
+                subtitle: const Text(
+                    'Ensures gutter and translation columns are on the correct side for printing.'),
+                value: startOnRightSide,
+                contentPadding: EdgeInsets.zero,
+                onChanged: onStartOnRightSideChanged,
               ),
               if (outputFormat == 'PNG') ...[
                 SwitchListTile(

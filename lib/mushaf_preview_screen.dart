@@ -71,6 +71,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
 
   // Cover & Layout settings
   int _prefaceBlankPages = 1;
+  bool _startOnRightSide = true;
   String _coverBackgroundColor = '#1a472a'; // Default green
   bool _justifyTranslation = false;
 
@@ -131,6 +132,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     _selectedWbwLanguage = _prefs.getString('wbw_language') ?? 'en';
     _selectedTranslationKey = _prefs.getString('translation_key');
     _prefaceBlankPages = _prefs.getInt('preface_blank_pages') ?? 1;
+    _startOnRightSide = _prefs.getBool('start_on_right_side') ?? true;
     _coverBackgroundColor =
         _prefs.getString('cover_background_color') ?? '#1a472a';
     _justifyTranslation = _prefs.getBool('justify_translation') ?? false;
@@ -194,6 +196,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
       await _prefs.setString('translation_key', _selectedTranslationKey!);
     }
     await _prefs.setInt('preface_blank_pages', _prefaceBlankPages);
+    await _prefs.setBool('start_on_right_side', _startOnRightSide);
     await _prefs.setString('cover_background_color', _coverBackgroundColor);
     await _prefs.setBool('justify_translation', _justifyTranslation);
     await _prefs.setString('output_format', _outputFormat);
@@ -475,6 +478,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                     selectedPageSize: _selectedPageSize,
                     outputFormat: _outputFormat,
                     prefaceBlankPages: _prefaceBlankPages,
+                    startOnRightSide: _startOnRightSide,
                     dpi: _dpi,
                     showDecorations: _showDecorations,
                     onPageSizeChanged: (val) {
@@ -486,6 +490,12 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                     onPrefaceBlankPagesChanged: (val) {
                       setState(() {
                         _prefaceBlankPages = val;
+                        _saveSettings();
+                      });
+                    },
+                    onStartOnRightSideChanged: (val) {
+                      setState(() {
+                        _startOnRightSide = val;
                         _saveSettings();
                       });
                     },
@@ -744,7 +754,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
             children: [
               // Page Range Controls
               Expanded(
-                flex: 2,
+                flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -772,34 +782,6 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                       'Quran Mushaf has 604 pages total',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-              // Preview & Generate
-              Expanded(
-                flex: 3,
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: NumberInput(
-                            label: 'Preview Page',
-                            value: _previewPage,
-                            onChanged: (v) => _previewPage = v.toInt(),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: _isGenerating
-                              ? null
-                              : () => _generateHtml(isPreview: true),
-                          icon: const Icon(Icons.remove_red_eye),
-                          label: const Text('Preview'),
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
@@ -826,6 +808,34 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                               Theme.of(context).colorScheme.onPrimaryContainer,
                         ),
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              // Preview & Generate
+              Expanded(
+                flex: 2,
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: NumberInput(
+                            label: 'Preview Page',
+                            value: _previewPage,
+                            onChanged: (v) => _previewPage = v.toInt(),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: _isGenerating
+                              ? null
+                              : () => _generateHtml(isPreview: true),
+                          icon: const Icon(Icons.remove_red_eye),
+                          label: const Text('Preview'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -941,6 +951,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
           dbReader,
           pageSize: _selectedPageSize,
           prefaceBlankPages: _prefaceBlankPages,
+          startOnRightSide: _startOnRightSide,
           coverBackgroundColor: _coverBackgroundColor,
           baseTextColor: _baseTextColor,
           tajweedColors: _tajweedColors,
@@ -1004,6 +1015,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
           includeWbw: _includeWbw,
           wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,
           showDecorations: _showDecorations,
+          startOnRightSide: _startOnRightSide,
           baseTextColor: _baseTextColor,
           tajweedColors: _tajweedColors,
           tajweedHighlighting: _tajweedHighlighting,
