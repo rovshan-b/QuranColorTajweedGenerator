@@ -1,5 +1,8 @@
 # Tajweed Quran Mushaf Generator
 
+بسم الله الرحمن الرحيم
+_In the name of Allah, Most Gracious, Most Merciful_
+
 A Flutter desktop application designed to generate high-quality, print-ready HTML and PNG assets of the Quran Mushaf with Tajweed color coding. The application supports two primary workflows:
 
 1. **HTML to PDF**: Optimized for browser-to-PDF printing with support for various page sizes and side-column translations. (Tested mainly using Firefox browser and some tests done with Google Chrome browser).
