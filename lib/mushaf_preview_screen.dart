@@ -359,13 +359,6 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
       }
 
       _availableTranslations = apiTranslations;
-
-      // Validate that the selected key exists in the new list
-      if (_selectedTranslationKey != null &&
-          !apiTranslations.any((t) => t.key == _selectedTranslationKey)) {
-        _selectedTranslationKey = null;
-      }
-
       _selectedTranslationKey = _selectedTranslationKey ??
           (apiTranslations.isNotEmpty ? apiTranslations.first.key : null);
       if (mounted) {
@@ -835,6 +828,30 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
             children: [
               // Page Range Controls
               Expanded(
+                flex: 2,
+                child: Column(
+                  children: [
+                    NumberInput(
+                      label: 'Preview Page',
+                      value: _previewPage,
+                      onChanged: (v) => _previewPage = v.toInt(),
+                    ),
+                    const SizedBox(height: 36),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isGenerating
+                            ? null
+                            : () => _generateHtml(isPreview: true),
+                        icon: const Icon(Icons.remove_red_eye),
+                        label: const Text('Preview'),
+                      ),
+                    )
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
                 flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -893,34 +910,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                   ],
                 ),
               ),
-              const SizedBox(width: 24),
+
               // Preview & Generate
-              Expanded(
-                flex: 2,
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: NumberInput(
-                            label: 'Preview Page',
-                            value: _previewPage,
-                            onChanged: (v) => _previewPage = v.toInt(),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: _isGenerating
-                              ? null
-                              : () => _generateHtml(isPreview: true),
-                          icon: const Icon(Icons.remove_red_eye),
-                          label: const Text('Preview'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
           if (_isGenerating || _statusMessage.isNotEmpty || _outputPath != null)
