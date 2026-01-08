@@ -67,6 +67,7 @@ dev_dependencies:
   flutter_lints: ^2.0.0
 
   flutter_launcher_icons: ^0.14.4
+  inno_bundle: ^0.11.2
 
 flutter_launcher_icons:
   android: "launcher_icon"

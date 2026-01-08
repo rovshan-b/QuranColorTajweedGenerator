@@ -9,7 +9,7 @@ A Flutter desktop application designed to generate high-quality, print-ready HTM
 
 Get the latest version for your operating system:
 
-- **[Download for Windows (.exe)](https://github.com/rovshan-b/QuranColorTajweedGenerator/blob/master/INSTALLERS/Windows/MushafGenerator-x86_64-1.0.0+5-Installer.exe?raw=true)**
+- **[Download for Windows (.exe)](https://github.com/rovshan-b/QuranColorTajweedGenerator/blob/master/INSTALLERS/Windows/MushafGenerator-x86_64-1.0.0+7-Installer.exe?raw=true)**
 - **[Download for macOS (.dmg)](https://github.com/rovshan-b/QuranColorTajweedGenerator/blob/master/INSTALLERS/macOS/MushafGenerator-Installer.dmg?raw=true)**
 
 ## Screenshots
@@ -32,17 +32,22 @@ Users are **solely responsible** for verifying the final output, including but n
 
 ## Features
 
-- **Tajweed Color Coding**: Precise character-level coloring for Tajweed rules:
+- **Custom Tajweed Coding**: Precise character-level coloring for Tajweed rules. The application comes with standard defaults, but **every rule name and color is 100% customizable**:
 
-  - 🟢 **LAFZATULLAH** (Allah's name) - Green
-  - 🔵 **Izhar** - Cyan
-  - 🔴 **Ikhfaa** - Red
-  - 🩷 **Idgham with Ghunna** - Pink
-  - ⚪ **Idgham without Ghunna** - Gray
-  - 🔵 **Iqlab** - Blue
-  - 🟢 **Qalqala** - Olive
-  - 🟠 **Ghunna** - Orange
-  - 🟣 **Madd (Prolonging)** - Purple
+  - **Rules supported**: LAFZATULLAH, Izhar, Ikhfaa, Idgham (with/without Ghunna), Iqlab, Qalqala, Ghunna, and Madd.
+  - **Toggles**: Enable or disable highlighting for specific rules to simplify the output.
+  - **Colors**: Change any rule's color using a real-time color picker.
+
+- **Full Localization**:
+
+  - **Custom Surah Names**: Rename all 114 Surahs for the Table of Contents and side-column headers (ideal for different languages or transliteration styles).
+  - **Localized Labels**: Customize UI labels like "Tajweed Coding" on the cover or "Idgham" in the legend.
+
+- **Labels & Typography**:
+
+  - **Cover Customization**: Set your own title (e.g., "The Holy Quran") and subtitle.
+  - **System Labels**: Customize the Table of Contents title and the text shown on intentional blank pages.
+  - **Font Stacks**: Optimized cross-platform fonts ("Segoe UI", "Helvetica Neue", Arial) for translations to ensure consistency on Windows and macOS.
 
 - **Flexible Page Formats**:
 
@@ -58,7 +63,10 @@ Users are **solely responsible** for verifying the final output, including but n
 
 - **Translation Support**:
 
-  - **Side-column Translation**: Fetches translations from QuranEnc API or local JSON files.
+  - **Multiple Sources**:
+    - **QuranEnc**: Dynamic fetching from the QuranEnc API.
+    - **Tarteel (SQLite)**: Support for Tarteel-format database files.
+    - **Tanzil (TXT)**: Support for Tanzil-format text files.
   - **Word-by-Word (WBW)**: Interlinear translation support (e.g., English, Turkish, Indonesian).
   - **Compact Mode**: Automatically switches to inline translation layout for dense pages to prevent overflow.
 
@@ -71,22 +79,34 @@ Users are **solely responsible** for verifying the final output, including but n
 
 ### 1. Configuration
 
-Use the application dashboard to set up your desired output:
+The application is organized into tabs for easy setup:
+
+- **General & Labels**:
+
+  - Set the **Cover Title**, **Subtitle**, and **Background Color**.
+  - Customize the **Table of Contents Title** and **Blank Page text**.
+  - Control the number of **Preface Blank Pages** inserted after the cover.
 
 - **Layout & Typography**:
 
-  - Select a **Page Size** preset or enter custom dimensions.
-  - Adjust **Margins** (Gutter, Outer, Top, Bottom) based on your printer or binding requirements.
-  - **Cover Color**: Enter a Hex color code (e.g., `#1a472a`) for the cover background.
-  - **Preface Blank Pages**: Set how many empty pages to insert between the cover and the Mushaf content.
+  - Select a **Page Size** preset (A3, A4, B5, A5) or create a **Custom Preset**.
+  - Adjust high-precision **Margins** (Gutter, Outer, Top, Bottom) for professional binding.
+  - Set **DPI** for PNG generation (300dpi is standard for print).
 
-- **Content Options**:
+- **Translation & WBW**:
 
-  - **Include Translation**: Adds a side column with translation. You can adjust the width fraction and font size.
-  - **Include Word-by-Word**: Adds interlinear translation under each Arabic word.
+  - **Side-column Translation**: Enable and select sources (QuranEnc, Tarteel, or Tanzil format).
+  - **Word-by-Word (WBW)**: Enable interlinear translation with support for multiple languages.
+  - **Compact Mode**: The app automatically manages font sizes to prevent text overflow.
 
-- **Custom Text**:
-  - You can rename the "Cover Title", "TOC Title", and other labels to suit your language or preference.
+- **Colors**:
+
+  - Change the **Base Text Color** for the entire Mushaf.
+  - Toggle or change colors for individual **Tajweed Rules**.
+
+- **Localization**:
+  - Input your own names for **all 114 Surahs**.
+  - Customize the **Rule Labels** used in the legend (e.g., translate "Qalqala" to your native language).
 
 ### 2. Generation
 
@@ -137,8 +157,13 @@ To convert the HTML to a PDF file:
 ### Project Structure
 
 - `lib/mushaf_html_generator.dart`: Core logic for building the HTML DOM and CSS.
+- `lib/mushaf_image_generator.dart`: Logic for rendering high-res PNGs and `glyphs.db`.
+- `lib/*_translation_service.dart`: Handlers for QuranEnc API, Tarteel (SQLite), and Tanzil (TXT) translation formats.
+- `lib/mushaf_wbw_service.dart`: Management for interlinear Word-by-Word datasets.
+- `lib/mushaf_page_config.dart`: Centralized layout presets and book margin logic.
+- `lib/ui/screens/mushaf_preview/tabs/`: Contains individual configuration screens (Localization, Colors, etc.).
 - `lib/mushaf_page_config.dart`: Definitions for page sizes and layout configuration.
-- `lib/mushaf_preview_screen.dart`: Main UI for the application.
+- `lib/mushaf_preview_screen.dart`: Main UI controller and state management.
 - `resources/`: Contains the SQLite databases (`qpc-v4-tajweed-15-lines.db`, `uthmani.db`).
 
 ### Data Integrity
