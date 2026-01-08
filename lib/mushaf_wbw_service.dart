@@ -86,7 +86,10 @@ class MushafWbwService {
       // Actually, looking at the CSV, some fields have quotes and commas.
       // Let's use a slightly better parser or a regex.
       final parts = _splitCsvLine(line);
-      if (parts.length <= langIndex) continue;
+      if (parts.length <= langIndex) {
+        throw Exception(
+            'Corrupt WBW Data at line $i: "$line". Expected at least ${langIndex + 1} columns, found ${parts.length}.');
+      }
 
       final sura = parts[0];
       final ayah = parts[1];

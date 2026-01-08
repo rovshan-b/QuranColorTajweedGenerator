@@ -56,8 +56,6 @@ class QuranEncTranslationService {
   /// Returns a map of aya number -> translation text.
   Future<Map<int, String>> fetchSurahTranslations(
       String translationKey, int surahNumber) async {
-    final result = <int, String>{};
-
     try {
       // 1. Try to load from local cache first
       final cacheFile = await _getCacheFile(translationKey, surahNumber);
@@ -73,7 +71,11 @@ class QuranEncTranslationService {
       final uri =
           Uri.parse('$_baseUrl/translation/sura/$translationKey/$surahNumber');
       final resp = await http.get(uri);
-      if (resp.statusCode != 200) return result;
+      if (resp.statusCode != 200) {
+        throw Exception(
+            'Failed to fetch translation for Surah $surahNumber from QuranEnc API. '
+            'HTTP Status: ${resp.statusCode}');
+      }
 
       final json = jsonDecode(resp.body) as Map<String, dynamic>;
       final list = json['result'];
@@ -81,12 +83,20 @@ class QuranEncTranslationService {
       if (list is List) {
         // 3. Save raw result to cache before parsing
         await cacheFile.writeAsString(jsonEncode(list));
-        return _parseTranslationList(list);
+        final parsed = _parseTranslationList(list);
+        if (parsed.isEmpty) {
+          throw Exception(
+              'QuranEnc API returned an empty translation list for Surah $surahNumber.');
+        }
+        return parsed;
+      } else {
+        throw Exception(
+            'Unexpected response format from QuranEnc API for Surah $surahNumber.');
       }
-    } catch (_) {
-      // Return partial/empty map on failure.
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error fetching QuranEnc translation: $e');
     }
-    return result;
   }
 
   /// Helper to parse the list of translation items into a map

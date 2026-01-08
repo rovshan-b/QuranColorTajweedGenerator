@@ -21,6 +21,7 @@ import 'package:mushaf_generator/ui/screens/mushaf_preview/tabs/general_labels_t
 import 'package:mushaf_generator/ui/screens/mushaf_preview/tabs/layout_typography_tab.dart';
 import 'package:mushaf_generator/ui/screens/mushaf_preview/tabs/translation_tab.dart';
 import 'package:mushaf_generator/ui/screens/mushaf_preview/tabs/colors_tab.dart';
+import 'package:mushaf_generator/ui/screens/mushaf_preview/tabs/localization_tab.dart';
 import 'package:mushaf_generator/ui/widgets/custom_inputs.dart';
 
 /// Screen for generating Mushaf HTML with Tajweed coloring
@@ -80,6 +81,10 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   // Tajweed color customization
   Map<TajweedRule, String> _tajweedColors = {};
   Map<TajweedRule, bool> _tajweedHighlighting = {};
+
+  // Custom Localization
+  Map<int, String> _customSurahNames = {};
+  Map<String, String> _customLocalizedLabels = {};
 
   // Cover & Layout settings
   int _prefaceBlankPages = 1;
@@ -194,6 +199,24 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         });
       } catch (_) {}
     }
+
+    // Load custom localization
+    final savedSurahNames = _prefs.getString('custom_surah_names');
+    if (savedSurahNames != null) {
+      try {
+        final Map<String, dynamic> decoded = json.decode(savedSurahNames);
+        _customSurahNames =
+            decoded.map((k, v) => MapEntry(int.parse(k), v as String));
+      } catch (_) {}
+    }
+
+    final savedLocalizedLabels = _prefs.getString('custom_localized_labels');
+    if (savedLocalizedLabels != null) {
+      try {
+        _customLocalizedLabels =
+            Map<String, String>.from(json.decode(savedLocalizedLabels));
+      } catch (_) {}
+    }
   }
 
   Future<void> _saveSettings() async {
@@ -243,6 +266,13 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         _tajweedHighlighting.map((k, v) => MapEntry(k.name, v));
     await _prefs.setString(
         'tajweed_highlighting', json.encode(highlightingToSave));
+
+    // Save custom localization
+    final surahNamesToSave = _customSurahNames
+        .map((k, v) => MapEntry(k.toString(), v)); // JSON keys must be strings
+    await _prefs.setString('custom_surah_names', json.encode(surahNamesToSave));
+    await _prefs.setString(
+        'custom_localized_labels', json.encode(_customLocalizedLabels));
   }
 
   Future<void> _showSavePresetDialog() async {
@@ -432,7 +462,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: Text(_outputFormat == 'HTML'
@@ -484,6 +514,16 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                         Icon(Icons.palette, size: 20),
                         SizedBox(width: 8),
                         Text('Colors'),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.language, size: 20),
+                        SizedBox(width: 8),
+                        Text('Localization'),
                       ],
                     ),
                   ),
@@ -680,6 +720,29 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                         _tajweedHighlighting = {
                           for (var r in TajweedRule.values) r: true
                         };
+                        _saveSettings();
+                      });
+                    },
+                  ),
+                  LocalizationTab(
+                    customSurahNames: _customSurahNames,
+                    onSurahNamesChanged: (val) {
+                      setState(() {
+                        _customSurahNames = val;
+                        _saveSettings();
+                      });
+                    },
+                    customLocalizedLabels: _customLocalizedLabels,
+                    onLocalizedLabelsChanged: (val) {
+                      setState(() {
+                        _customLocalizedLabels = val;
+                        _saveSettings();
+                      });
+                    },
+                    onReset: () {
+                      setState(() {
+                        _customSurahNames = {};
+                        _customLocalizedLabels = {};
                         _saveSettings();
                       });
                     },
@@ -1041,6 +1104,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
           tajweedColors: _tajweedColors,
           tajweedHighlighting: _tajweedHighlighting,
           justifyTranslation: _justifyTranslation,
+          customSurahNames: _customSurahNames,
+          customLocalizedLabels: _customLocalizedLabels,
           includeTranslation: _includeTranslation,
           translationSource: _translationSource,
           tarteelFilePath: _tarteelFilePath,
@@ -1108,6 +1173,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
           baseTextColor: _baseTextColor,
           tajweedColors: _tajweedColors,
           tajweedHighlighting: _tajweedHighlighting,
+          customSurahNames: _customSurahNames,
+          customLocalizedLabels: _customLocalizedLabels,
         );
 
         await generator.generateImages(

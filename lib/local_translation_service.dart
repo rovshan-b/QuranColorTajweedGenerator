@@ -27,7 +27,7 @@ class LocalTranslationService {
 
     try {
       if (!await File(filePath).exists()) {
-        return result;
+        throw Exception('Tarteel translation database not found at: $filePath');
       }
 
       db = await openDatabase(filePath, readOnly: true);
@@ -46,8 +46,15 @@ class LocalTranslationService {
           result[ayah] = text;
         }
       }
+
+      if (result.isEmpty) {
+        throw Exception(
+            'No translations found for Surah $surahNumber in $filePath. '
+            'Please ensure the database contains a "translation" table with "sura", "ayah", and "text" columns.');
+      }
     } catch (e) {
-      print('Error reading external local translation: $e');
+      if (e is Exception) rethrow;
+      throw Exception('Error reading external local translation: $e');
     } finally {
       await db?.close();
     }

@@ -39,6 +39,8 @@ class MushafHtmlGenerator {
   final Map<TajweedRule, String>? tajweedColors;
   final Map<TajweedRule, bool>? tajweedHighlighting;
   final bool justifyTranslation;
+  final Map<int, String>? customSurahNames;
+  final Map<String, String>? customLocalizedLabels;
 
   // Global labels
   final String coverTitle;
@@ -79,6 +81,8 @@ class MushafHtmlGenerator {
     this.tajweedColors,
     this.tajweedHighlighting,
     this.justifyTranslation = true,
+    this.customSurahNames,
+    this.customLocalizedLabels,
     this.coverTitle = 'ٱلْقُرْآنُ ٱلْكَرِيمُ',
     this.coverSubtitle = 'The Noble Quran',
     this.tocTitle = 'Table of Contents',
@@ -484,6 +488,7 @@ class MushafHtmlGenerator {
 
     .translation-wrapper {
       display: block;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
       line-height: ${pageSize.translationLineHeight};
       ${justifyTranslation ? 'text-align: justify;' : ''}
       text-justify: inter-word;
@@ -631,7 +636,7 @@ class MushafHtmlGenerator {
 
   String _generateCoverPage() {
     final lang = translationLanguage ?? 'en';
-    final tajweedCoding = getLocalizedText('tajweed_coding', lang);
+    final tajweedCoding = _getLabel('tajweed_coding', lang);
 
     final translationInfo = (includeTranslation && translationName != null)
         ? '<div class="cover-footer">$translationLabel: $translationName</div>'
@@ -670,6 +675,11 @@ class MushafHtmlGenerator {
     final buffer = StringBuffer();
     final lines = await _dbReader.getPageLines(pageNumber);
 
+    if (lines.isEmpty) {
+      throw Exception(
+          'Critical Error: No layout lines found for page $pageNumber in the layout database.');
+    }
+
     // Find the first surah/ayah on this page for header info
     int? firstSurah;
     int? firstAyah;
@@ -685,6 +695,9 @@ class MushafHtmlGenerator {
           firstSurah = firstWord.surah;
           firstAyah = firstWord.ayah;
           break;
+        } else {
+          throw Exception(
+              'Critical Error: Could not find first word (ID: ${line.firstWordId}) for page $pageNumber header.');
         }
       }
     }
@@ -694,9 +707,12 @@ class MushafHtmlGenerator {
     firstAyah ??= 1;
 
     // Get surah name and juz for header
-    final surahName = firstSurah > 0 && firstSurah <= surahNames.length
-        ? 'سُورَةُ ${surahNames[firstSurah - 1]}'
-        : '';
+    if (firstSurah <= 0 || firstSurah > surahNames.length) {
+      throw Exception(
+          'Invalid Surah Number for page $pageNumber: $firstSurah (header generation)');
+    }
+    final surahName = 'سُورَةُ ${surahNames[firstSurah - 1]}';
+
     final juzNumber = getJuzForPosition(firstSurah, firstAyah);
     final juzName = juzNumber > 0 && juzNumber <= juzNames.length
         ? juzNames[juzNumber - 1]
@@ -809,8 +825,11 @@ class MushafHtmlGenerator {
     for (final entry in legendEntries) {
       final rule = entry['rule'] as TajweedRule;
       final key = entry['key'] as String;
-      final label = getLocalizedText(key, lang);
-      final color = tajweedRuleToHex(rule);
+      final label = _getLabel(key, lang);
+      final isHighlighted = tajweedHighlighting?[rule] ?? true;
+      final color = isHighlighted
+          ? (tajweedColors?[rule] ?? tajweedRuleToHex(rule))
+          : baseTextColor;
 
       buffer.writeln('  <div class="legend-item">');
       buffer.writeln(
@@ -906,14 +925,19 @@ class MushafHtmlGenerator {
 
         // Add translated Surah name header
         final languageCode = translationLanguage ?? 'en';
-        final translatedName = getTranslatedSurahName(surah, languageCode);
+        final translatedName = _getSurahName(surah, languageCode);
         buffer.writeln(
             '<div class="translation-surah-header">$translatedName</div>');
       }
       lastSurah = surah;
 
       final key = '${pair.key}:${pair.value}';
-      var text = translationLookup[key] ?? '—';
+      final entry = translationLookup[key];
+      if (entry == null) {
+        throw Exception('Missing translation for Surah $surah Ayah $ayah. '
+            'Generation stopped to prevent incomplete output.');
+      }
+      var text = entry;
 
       // Remove leading ayah numbers if they exist (e.g., "1. ", "1 ")
       text = text.replaceFirst(RegExp(r'^\d+[\.\s]+'), '').trimLeft();
@@ -955,7 +979,7 @@ class MushafHtmlGenerator {
     final lang = translationLanguage ?? 'en';
 
     for (int s = 1; s <= surahNames.length; s++) {
-      final translatedName = getTranslatedSurahName(s, lang);
+      final translatedName = _getSurahName(s, lang);
       entries.add({
         'surah': s,
         'name': translatedName,
@@ -1026,9 +1050,11 @@ class MushafHtmlGenerator {
   }
 
   String _generateSurahHeader(int surahNumber) {
-    final surahName = surahNumber > 0 && surahNumber <= surahNames.length
-        ? surahNames[surahNumber - 1]
-        : 'سورة';
+    if (surahNumber <= 0 || surahNumber > surahNames.length) {
+      throw Exception(
+          'Invalid Surah Number in header: $surahNumber. Must be between 1 and ${surahNames.length}.');
+    }
+    final surahName = surahNames[surahNumber - 1];
 
     return '''
 <div class="surah-header">
@@ -1058,6 +1084,13 @@ class MushafHtmlGenerator {
       throw Exception(
           'No words found for page ${line.pageNumber} line ${line.lineNumber} (word IDs ${line.firstWordId}-${line.lastWordId})');
     }
+
+    final expectedCount = line.lastWordId! - line.firstWordId! + 1;
+    if (words.length != expectedCount) {
+      throw Exception(
+          'Data Integrity Error: Page ${line.pageNumber} line ${line.lineNumber} expects words ${line.firstWordId}-${line.lastWordId} ($expectedCount words), but found ${words.length} in database.');
+    }
+
     final buffer = StringBuffer();
 
     final alignmentClass = line.isCentered ? 'line-centered' : 'line-justified';
@@ -1127,6 +1160,7 @@ class MushafHtmlGenerator {
     if (includeWbw) {
       final translation =
           _wbwService.getTranslation(word.surah, word.ayah, word.word);
+
       final colorClass = isEven ? 'wbw-even' : 'wbw-odd';
       if (translation != null && translation.isNotEmpty) {
         buffer.write(
@@ -1149,5 +1183,21 @@ class MushafHtmlGenerator {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
+  }
+
+  String _getSurahName(int surahNumber, String lang) {
+    if (customSurahNames != null &&
+        customSurahNames!.containsKey(surahNumber)) {
+      return customSurahNames![surahNumber]!;
+    }
+    return getTranslatedSurahName(surahNumber, lang);
+  }
+
+  String _getLabel(String key, String lang) {
+    if (customLocalizedLabels != null &&
+        customLocalizedLabels!.containsKey(key)) {
+      return customLocalizedLabels![key]!;
+    }
+    return getLocalizedText(key, lang);
   }
 }

@@ -36,10 +36,12 @@ class TanzilTranslationService {
     final result = <int, String>{};
     try {
       final file = File(filePath);
-      if (!await file.exists()) return result;
+      if (!await file.exists()) {
+        throw Exception('Tanzil translation file not found at: $filePath');
+      }
 
       final lines = await file.readAsLines();
-      int count = 0;
+      int validAyahCount = 0;
       for (final line in lines) {
         final trimmed = line.trim();
         if (trimmed.isEmpty) continue;
@@ -55,11 +57,18 @@ class TanzilTranslationService {
           result[a] = text;
         }
 
-        count++;
-        if (count >= 6236) break;
+        validAyahCount++;
+        if (validAyahCount >= 6236) break;
+      }
+
+      if (result.isEmpty) {
+        throw Exception(
+            'No translations found for Surah $surahNumber in $filePath. '
+            'Please ensure the file is in correct "sura|aya|text" format.');
       }
     } catch (e) {
-      print('Error parsing Tanzil file: $e');
+      if (e is Exception) rethrow;
+      throw Exception('Error parsing Tanzil file: $e');
     }
     return result;
   }

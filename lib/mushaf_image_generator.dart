@@ -26,6 +26,8 @@ class MushafImageGenerator {
   final String baseTextColor;
   final Map<TajweedRule, String>? tajweedColors;
   final Map<TajweedRule, bool>? tajweedHighlighting;
+  final Map<int, String>? customSurahNames;
+  final Map<String, String>? customLocalizedLabels;
   late final ui.Color _baseColor;
 
   MushafImageGenerator(
@@ -39,10 +41,23 @@ class MushafImageGenerator {
     this.baseTextColor = '#000000',
     this.tajweedColors,
     this.tajweedHighlighting,
+    this.customSurahNames,
+    this.customLocalizedLabels,
   })  : _wordMapper = MushafWordMapper(),
         _wbwService = MushafWbwService(),
         scale = dpi / 96.0 {
     _baseColor = ui.Color(int.parse(baseTextColor.replaceFirst('#', '0xFF')));
+  }
+
+  // Unused for now in Image Mode as we stick to Arabic headers
+  // String _getSurahName(int surahNumber) { ... }
+
+  String _getLabel(String key, String lang) {
+    if (customLocalizedLabels != null &&
+        customLocalizedLabels!.containsKey(key)) {
+      return customLocalizedLabels![key]!;
+    }
+    return getLocalizedText(key, lang);
   }
 
   Future<void> generateImages({
@@ -122,6 +137,10 @@ class MushafImageGenerator {
   Future<void> _drawPage(ui.Canvas canvas, int pageNum, int pxWidth,
       int pxHeight, Database db) async {
     final lines = await _dbReader.getPageLines(pageNum);
+    if (lines.isEmpty) {
+      throw Exception(
+          'Critical Error: No layout lines found for page $pageNum in the layout database.');
+    }
     final margins = pageSize.margins;
 
     // Convert margins to physical pixels
@@ -269,6 +288,9 @@ class MushafImageGenerator {
           firstSurah = firstWord.surah;
           firstAyah = firstWord.ayah;
           break;
+        } else {
+          throw Exception(
+              'Critical Error: Could not find first word (ID: ${line.firstWordId}) for page $pageNum header.');
         }
       }
     }
@@ -297,9 +319,11 @@ class MushafImageGenerator {
         canvas, ui.Offset((pxWidth - centerPainter.width) / 2, y));
 
     // 2. Draw Surah Name (Right Side)
-    final name = (firstSurah > 0 && firstSurah <= 114)
-        ? surahNames[firstSurah - 1]
-        : 'سورة';
+    if (firstSurah <= 0 || firstSurah > 114) {
+      throw Exception(
+          'Invalid Surah Number for page $pageNum: $firstSurah (header generation)');
+    }
+    final name = surahNames[firstSurah - 1];
     final surahName = 'سُورَةُ $name';
     final rightPainter = TextPainter(
       text: TextSpan(text: surahName, style: style),
@@ -356,8 +380,11 @@ class MushafImageGenerator {
         ui.RRect.fromRectAndRadius(rect, const ui.Radius.circular(8)), paint);
 
     // Draw text
-    final name =
-        (surahNum > 0 && surahNum <= 114) ? surahNames[surahNum - 1] : 'سورة';
+    if (surahNum <= 0 || surahNum > 114) {
+      throw Exception(
+          'Invalid Surah Number: $surahNum. Must be between 1 and 114.');
+    }
+    final name = surahNames[surahNum - 1];
     final text = 'سُورَةُ $name';
     final textPainter = TextPainter(
       text: TextSpan(
@@ -411,6 +438,17 @@ class MushafImageGenerator {
       Database db,
       int shrunkAyasCount) async {
     final words = await _dbReader.getWords(line.firstWordId!, line.lastWordId!);
+    if (words.isEmpty) {
+      throw Exception(
+          'No words found for page $pageNum line ${line.lineNumber} (word IDs ${line.firstWordId}-${line.lastWordId})');
+    }
+
+    final expectedCount = line.lastWordId! - line.firstWordId! + 1;
+    if (words.length != expectedCount) {
+      throw Exception(
+          'Data Integrity Error: Page $pageNum line ${line.lineNumber} expects words ${line.firstWordId}-${line.lastWordId} ($expectedCount words), but found ${words.length} in database.');
+    }
+
     final arabicScale = includeWbw ? pageSize.wbwArabicScale : 1.0;
     double currentFontSize = pageSize.fontSize * scale * arabicScale;
     bool wasShrunk = false;
@@ -442,7 +480,10 @@ class MushafImageGenerator {
           );
         } else {
           final tajweedWord = _wordMapper.mapWordToTokens(word);
-          if (tajweedWord == null) continue;
+          if (tajweedWord == null) {
+            throw Exception(
+                'Critical Error: Word mapping failed for ${word.surah}:${word.ayah}:${word.word} "${word.text}" on page $pageNum');
+          }
 
           final spans = <TextSpan>[];
           for (final token in tajweedWord.tokens) {
@@ -595,6 +636,8 @@ class MushafImageGenerator {
       double maxX, double arabicBottomY) {
     final translation =
         _wbwService.getTranslation(word.surah, word.ayah, word.word);
+
+    // Treat missing/null translation as empty (don't fail)
     if (translation == null || translation.isEmpty) return 0;
 
     final wbwFontSize = pageSize.wbwFontSize * scale;
@@ -668,7 +711,7 @@ class MushafImageGenerator {
 
     for (final entry in legendEntries) {
       final key = entry['key'] as String;
-      final label = getLocalizedText(key, lang);
+      final label = _getLabel(key, lang);
       final tp = TextPainter(
         text: TextSpan(
           text: label,
