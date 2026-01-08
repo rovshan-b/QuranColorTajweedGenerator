@@ -29,7 +29,18 @@ class MushafHtmlGenerator {
   final String? wbwLanguageName;
   final int prefaceBlankPages;
   final String coverBackgroundColor;
+  final String baseTextColor;
+  final Map<TajweedRule, String>? tajweedColors;
+  final Map<TajweedRule, bool>? tajweedHighlighting;
   final bool justifyTranslation;
+
+  // Global labels
+  final String coverTitle;
+  final String coverSubtitle;
+  final String tocTitle;
+  final String blankPageText;
+  final String translationLabel;
+  final String wbwLabel;
 
   // Debug flag for translation stats - set to true to see char count and font size on each page
   static const bool _debugTranslationStats = false;
@@ -53,7 +64,16 @@ class MushafHtmlGenerator {
     this.wbwLanguageName,
     this.prefaceBlankPages = 1,
     this.coverBackgroundColor = '#1a472a',
+    this.baseTextColor = '#000000',
+    this.tajweedColors,
+    this.tajweedHighlighting,
     this.justifyTranslation = true,
+    this.coverTitle = 'ٱلْقُرْآنُ ٱلْكَرِيمُ',
+    this.coverSubtitle = 'The Noble Quran',
+    this.tocTitle = 'Table of Contents',
+    this.blankPageText = 'This page is intentionally left blank',
+    this.translationLabel = 'Translation',
+    this.wbwLabel = 'Word by Word',
   })  : margins = margins ?? pageSize.margins,
         _wordMapper = MushafWordMapper(),
         _wbwService = MushafWbwService();
@@ -150,7 +170,7 @@ class MushafHtmlGenerator {
   }
 
   String _generateHtmlHeader() {
-    final nobleQuran = pageSize.textConfig.coverSubtitle;
+    final nobleQuran = coverSubtitle;
 
     double arabicScale = 1.0;
     if (includeTranslation) {
@@ -170,8 +190,11 @@ class MushafHtmlGenerator {
     // Build tajweed CSS classes from rule-color mapper
     final tajweedCss = TajweedRule.values.map((r) {
       final key = _tajweedRuleKey(r);
-      final hex = tajweedRuleToHex(r);
-      return '.tajweed-$key { color: $hex; }';
+      final isHighlighted = tajweedHighlighting?[r] ?? true;
+      final color = isHighlighted
+          ? (tajweedColors?[r] ?? tajweedRuleToHex(r))
+          : baseTextColor;
+      return '.tajweed-$key { color: $color; }';
     }).join('\n    ');
 
     return '''
@@ -205,7 +228,7 @@ class MushafHtmlGenerator {
     body {
       font-family: 'Kitab', 'Amiri', 'Traditional Arabic', serif;
       background-color: #FFFEF5;
-      color: #000;
+      color: $baseTextColor;
       direction: rtl;
       text-rendering: optimizeLegibility;
       -webkit-font-smoothing: antialiased;
@@ -336,12 +359,12 @@ class MushafHtmlGenerator {
       text-align: center;
       font-size: ${bodyFontSize.toStringAsFixed(2)}px;
       padding: 10px 0;
-      color: #000;
+      color: $baseTextColor;
     }
     
     .aya-number {
       font-size: ${ayaNumberFontSize.toStringAsFixed(2)}px;
-      color: #000;
+      color: $baseTextColor;
       padding: 0 2px;
     }
     
@@ -597,11 +620,8 @@ class MushafHtmlGenerator {
   }
 
   String _generateCoverPage() {
-    final textConfig = pageSize.textConfig;
     final lang = translationLanguage ?? 'en';
     final tajweedCoding = getLocalizedText('tajweed_coding', lang);
-    final translationLabel = textConfig.translationLabel;
-    final wbwLabel = textConfig.wbwLabel;
 
     final translationInfo = (includeTranslation && translationName != null)
         ? '<div class="cover-footer">$translationLabel: $translationName</div>'
@@ -613,8 +633,8 @@ class MushafHtmlGenerator {
     return '''
 <div class="cover">
   <div class="cover-ornament">❁ ❁ ❁</div>
-  <div class="cover-title">${textConfig.coverTitle}</div>
-  <div class="cover-subtitle">${textConfig.coverSubtitle}</div>
+  <div class="cover-title">${coverTitle}</div>
+  <div class="cover-subtitle">${coverSubtitle}</div>
   <div class="cover-basmallah">بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ</div>
   <div class="cover-ornament">❁ ❁ ❁</div>
   <div class="cover-footer">$tajweedCoding</div>
@@ -625,7 +645,6 @@ class MushafHtmlGenerator {
   }
 
   String _generateEmptyPage({required int physicalPageNumber}) {
-    final blankPageText = pageSize.textConfig.blankPageText;
     final pageClass = physicalPageNumber.isOdd ? 'page-odd' : 'page-even';
     return '''
 <div class="page $pageClass">
@@ -939,7 +958,6 @@ class MushafHtmlGenerator {
     int entriesPerPage = pageSize.tocEntriesPerPage;
 
     final pages = <String>[];
-    final tocTitle = pageSize.textConfig.tocTitle;
 
     for (int i = 0; i < entries.length; i += entriesPerPage) {
       final chunk =

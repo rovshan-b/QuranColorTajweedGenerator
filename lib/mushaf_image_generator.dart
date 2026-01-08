@@ -23,6 +23,8 @@ class MushafImageGenerator {
   final String? wbwLanguage;
   final bool showDecorations;
   final String baseTextColor;
+  final Map<TajweedRule, String>? tajweedColors;
+  final Map<TajweedRule, bool>? tajweedHighlighting;
   late final ui.Color _baseColor;
 
   MushafImageGenerator(
@@ -33,6 +35,8 @@ class MushafImageGenerator {
     this.wbwLanguage,
     this.showDecorations = true,
     this.baseTextColor = '#000000',
+    this.tajweedColors,
+    this.tajweedHighlighting,
   })  : _wordMapper = MushafWordMapper(),
         _wbwService = MushafWbwService(),
         scale = dpi / 96.0 {
@@ -441,10 +445,19 @@ class MushafImageGenerator {
 
           final spans = <TextSpan>[];
           for (final token in tajweedWord.tokens) {
-            final color = token.rule == TajweedRule.none
-                ? _baseColor
-                : Color(int.parse(
-                    tajweedRuleToHex(token.rule).replaceFirst('#', '0xFF')));
+            Color color;
+            if (token.rule == TajweedRule.none) {
+              color = _baseColor;
+            } else {
+              final isHighlighted = tajweedHighlighting?[token.rule] ?? true;
+              if (isHighlighted) {
+                final colorHex =
+                    tajweedColors?[token.rule] ?? tajweedRuleToHex(token.rule);
+                color = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
+              } else {
+                color = _baseColor;
+              }
+            }
             spans.add(TextSpan(
               text: token.text,
               style: TextStyle(
@@ -680,7 +693,10 @@ class MushafImageGenerator {
       final tp = itemPainters[i];
 
       // Draw color box
-      final colorHex = tajweedRuleToHex(rule);
+      final isHighlighted = tajweedHighlighting?[rule] ?? true;
+      final colorHex = isHighlighted
+          ? (tajweedColors?[rule] ?? tajweedRuleToHex(rule))
+          : baseTextColor;
       final color = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
       final boxRect =
           ui.Rect.fromLTWH(currentX, itemsY, legendColorSize, legendColorSize);

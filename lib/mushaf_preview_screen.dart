@@ -8,9 +8,17 @@ import 'mushaf_db_reader.dart';
 import 'mushaf_html_generator.dart';
 import 'mushaf_image_generator.dart';
 import 'mushaf_page_config.dart';
+import 'tajweed_rule.dart';
+import 'tajweed_color_mapper.dart';
 import 'quran_enc_translation_service.dart';
 import 'mushaf_wbw_service.dart';
 import 'local_translation_service.dart';
+
+import 'package:mushaf_generator/ui/screens/mushaf_preview/tabs/general_labels_tab.dart';
+import 'package:mushaf_generator/ui/screens/mushaf_preview/tabs/layout_typography_tab.dart';
+import 'package:mushaf_generator/ui/screens/mushaf_preview/tabs/translation_tab.dart';
+import 'package:mushaf_generator/ui/screens/mushaf_preview/tabs/colors_tab.dart';
+import 'package:mushaf_generator/ui/widgets/custom_inputs.dart';
 
 /// Screen for generating Mushaf HTML with Tajweed coloring
 class MushafPreviewScreen extends StatefulWidget {
@@ -57,10 +65,22 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   bool _showDecorations = true;
   String _baseTextColor = '#000000';
 
+  // Tajweed color customization
+  Map<TajweedRule, String> _tajweedColors = {};
+  Map<TajweedRule, bool> _tajweedHighlighting = {};
+
   // Cover & Layout settings
   int _prefaceBlankPages = 1;
   String _coverBackgroundColor = '#1a472a'; // Default green
   bool _justifyTranslation = false;
+
+  // Text Labels & Titles
+  String _coverTitle = 'ٱلْقُرْآنُ ٱلْكَرِيمُ';
+  String _coverSubtitle = 'The Noble Quran';
+  String _tocTitle = 'Table of Contents';
+  String _blankPageText = 'This page is intentionally left blank';
+  String _translationLabel = 'Translation';
+  String _wbwLabel = 'Word by Word';
 
   @override
   void initState() {
@@ -118,6 +138,45 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     _dpi = _prefs.getInt('dpi') ?? 300;
     _showDecorations = _prefs.getBool('show_decorations') ?? true;
     _baseTextColor = _prefs.getString('base_text_color') ?? '#000000';
+
+    // Load text labels
+    _coverTitle = _prefs.getString('cover_title') ?? 'ٱلْقُرْآنُ ٱلْكَرِيمُ';
+    _coverSubtitle = _prefs.getString('cover_subtitle') ?? 'The Noble Quran';
+    _tocTitle = _prefs.getString('toc_title') ?? 'Table of Contents';
+    _blankPageText = _prefs.getString('blank_page_text') ??
+        'This page is intentionally left blank';
+    _translationLabel = _prefs.getString('translation_label') ?? 'Translation';
+    _wbwLabel = _prefs.getString('wbw_label') ?? 'Word by Word';
+
+    // Load tajweed custom colors
+    _tajweedColors = Map.from(defaultTajweedColors);
+    final savedColors = _prefs.getString('tajweed_colors');
+    if (savedColors != null) {
+      try {
+        final Map<String, dynamic> decoded = json.decode(savedColors);
+        decoded.forEach((key, value) {
+          try {
+            final rule = TajweedRule.values.firstWhere((r) => r.name == key);
+            _tajweedColors[rule] = value as String;
+          } catch (_) {}
+        });
+      } catch (_) {}
+    }
+
+    // Load tajweed highlighting
+    _tajweedHighlighting = {for (var r in TajweedRule.values) r: true};
+    final savedHighlighting = _prefs.getString('tajweed_highlighting');
+    if (savedHighlighting != null) {
+      try {
+        final Map<String, dynamic> decoded = json.decode(savedHighlighting);
+        decoded.forEach((key, value) {
+          try {
+            final rule = TajweedRule.values.firstWhere((r) => r.name == key);
+            _tajweedHighlighting[rule] = value as bool;
+          } catch (_) {}
+        });
+      } catch (_) {}
+    }
   }
 
   Future<void> _saveSettings() async {
@@ -141,6 +200,24 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     await _prefs.setInt('dpi', _dpi);
     await _prefs.setBool('show_decorations', _showDecorations);
     await _prefs.setString('base_text_color', _baseTextColor);
+
+    // Save text labels
+    await _prefs.setString('cover_title', _coverTitle);
+    await _prefs.setString('cover_subtitle', _coverSubtitle);
+    await _prefs.setString('toc_title', _tocTitle);
+    await _prefs.setString('blank_page_text', _blankPageText);
+    await _prefs.setString('translation_label', _translationLabel);
+    await _prefs.setString('wbw_label', _wbwLabel);
+
+    // Save tajweed custom colors
+    final colorsToSave = _tajweedColors.map((k, v) => MapEntry(k.name, v));
+    await _prefs.setString('tajweed_colors', json.encode(colorsToSave));
+
+    // Save tajweed highlighting
+    final highlightingToSave =
+        _tajweedHighlighting.map((k, v) => MapEntry(k.name, v));
+    await _prefs.setString(
+        'tajweed_highlighting', json.encode(highlightingToSave));
   }
 
   Future<void> _showSavePresetDialog() async {
@@ -224,68 +301,6 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     );
   }
 
-  Widget _buildNumberInput({
-    required String label,
-    required num value,
-    required ValueChanged<num> onChanged,
-    bool isDecimal = false,
-    String? helpText,
-    bool enabled = true,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: _NumberInput(
-        label: label,
-        value: value,
-        isDecimal: isDecimal,
-        enabled: enabled,
-        onChanged: (v) {
-          onChanged(v);
-          _saveSettings();
-        },
-        suffix: helpText != null
-            ? IconButton(
-                icon: const Icon(Icons.help_outline, size: 18),
-                onPressed: () => _showHelpDialog(label, helpText),
-                tooltip: 'Help',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              )
-            : null,
-      ),
-    );
-  }
-
-  Widget _buildTextInput({
-    required String label,
-    required String value,
-    required ValueChanged<String> onChanged,
-    String? helpText,
-    bool enabled = true,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: _TextInput(
-        label: label,
-        value: value,
-        enabled: enabled,
-        onChanged: (v) {
-          onChanged(v);
-          _saveSettings();
-        },
-        suffix: helpText != null
-            ? IconButton(
-                icon: const Icon(Icons.help_outline, size: 18),
-                onPressed: () => _showHelpDialog(label, helpText),
-                tooltip: 'Help',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              )
-            : null,
-      ),
-    );
-  }
-
   Future<void> _loadWbwLanguages() async {
     try {
       final langs = await MushafWbwService.fetchAvailableLanguages();
@@ -349,33 +364,271 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_outputFormat == 'HTML'
-            ? 'Mushaf HTML Generator'
-            : 'Mushaf Image Generator'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_outputFormat == 'HTML'
+              ? 'Mushaf HTML Generator'
+              : 'Mushaf Image Generator'),
+        ),
+        body: Column(
           children: [
-            // Output Settings
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Output Settings',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
+            _buildHeader(),
+            Material(
+              color: Theme.of(context).colorScheme.surface,
+              child: const TabBar(
+                tabs: [
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('Format: '),
-                        const SizedBox(width: 8),
+                        Icon(Icons.settings, size: 20),
+                        SizedBox(width: 8),
+                        Text('General & Labels'),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.design_services, size: 20),
+                        SizedBox(width: 8),
+                        Text('Layout & Typography'),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.translate, size: 20),
+                        SizedBox(width: 8),
+                        Text('Translation & WBW'),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.palette, size: 20),
+                        SizedBox(width: 8),
+                        Text('Colors'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  GeneralLabelsTab(
+                    coverTitle: _coverTitle,
+                    onCoverTitleChanged: (val) {
+                      setState(() {
+                        _coverTitle = val;
+                        _saveSettings();
+                      });
+                    },
+                    coverSubtitle: _coverSubtitle,
+                    onCoverSubtitleChanged: (val) {
+                      setState(() {
+                        _coverSubtitle = val;
+                        _saveSettings();
+                      });
+                    },
+                    tocTitle: _tocTitle,
+                    onTocTitleChanged: (val) {
+                      setState(() {
+                        _tocTitle = val;
+                        _saveSettings();
+                      });
+                    },
+                    blankPageText: _blankPageText,
+                    onBlankPageTextChanged: (val) {
+                      setState(() {
+                        _blankPageText = val;
+                        _saveSettings();
+                      });
+                    },
+                    translationLabel: _translationLabel,
+                    onTranslationLabelChanged: (val) {
+                      setState(() {
+                        _translationLabel = val;
+                        _saveSettings();
+                      });
+                    },
+                    wbwLabel: _wbwLabel,
+                    onWbwLabelChanged: (val) {
+                      setState(() {
+                        _wbwLabel = val;
+                        _saveSettings();
+                      });
+                    },
+                    onShowHelp: _showHelpDialog,
+                  ),
+                  LayoutTypographyTab(
+                    selectedPageSize: _selectedPageSize,
+                    outputFormat: _outputFormat,
+                    prefaceBlankPages: _prefaceBlankPages,
+                    dpi: _dpi,
+                    showDecorations: _showDecorations,
+                    onPageSizeChanged: (val) {
+                      setState(() {
+                        _selectedPageSize = val;
+                        _saveSettings();
+                      });
+                    },
+                    onPrefaceBlankPagesChanged: (val) {
+                      setState(() {
+                        _prefaceBlankPages = val;
+                        _saveSettings();
+                      });
+                    },
+                    onDpiChanged: (val) {
+                      setState(() {
+                        _dpi = val;
+                        _saveSettings();
+                      });
+                    },
+                    onShowDecorationsChanged: (val) {
+                      setState(() {
+                        _showDecorations = val;
+                        _saveSettings();
+                      });
+                    },
+                    onShowHelp: _showHelpDialog,
+                  ),
+                  TranslationTab(
+                    selectedPageSize: _selectedPageSize,
+                    outputFormat: _outputFormat,
+                    includeTranslation: _includeTranslation,
+                    selectedTranslationKey: _selectedTranslationKey,
+                    availableTranslations: _availableTranslations,
+                    includeWbw: _includeWbw,
+                    selectedWbwLanguage: _selectedWbwLanguage,
+                    availableWbwLanguages: _availableWbwLanguages,
+                    justifyTranslation: _justifyTranslation,
+                    onIncludeTranslationChanged: (val) {
+                      setState(() {
+                        _includeTranslation = val;
+                        if (_includeTranslation &&
+                            _selectedTranslationKey == null) {
+                          _selectedTranslationKey =
+                              _availableTranslations.isNotEmpty
+                                  ? _availableTranslations.first.key
+                                  : 'english_saheeh';
+                        }
+                        _saveSettings();
+                      });
+                    },
+                    onTranslationKeyChanged: (val) {
+                      setState(() {
+                        _selectedTranslationKey = val;
+                        _saveSettings();
+                      });
+                    },
+                    onIncludeWbwChanged: (val) {
+                      setState(() {
+                        _includeWbw = val;
+                        _saveSettings();
+                      });
+                    },
+                    onWbwLanguageChanged: (val) {
+                      setState(() {
+                        _selectedWbwLanguage = val;
+                        _saveSettings();
+                      });
+                    },
+                    onJustifyTranslationChanged: (val) {
+                      setState(() {
+                        _justifyTranslation = val;
+                        _saveSettings();
+                      });
+                    },
+                    onPageSizeChanged: (val) {
+                      setState(() {
+                        _selectedPageSize = val;
+                        _saveSettings();
+                      });
+                    },
+                    onShowHelp: _showHelpDialog,
+                  ),
+                  ColorsTab(
+                    coverBackgroundColor: _coverBackgroundColor,
+                    baseTextColor: _baseTextColor,
+                    tajweedColors: _tajweedColors,
+                    tajweedHighlighting: _tajweedHighlighting,
+                    onCoverBackgroundColorChanged: (val) {
+                      setState(() {
+                        _coverBackgroundColor = val;
+                        _saveSettings();
+                      });
+                    },
+                    onBaseTextColorChanged: (val) {
+                      setState(() {
+                        _baseTextColor = val;
+                        _saveSettings();
+                      });
+                    },
+                    onTajweedColorChanged: (rule, val) {
+                      setState(() {
+                        _tajweedColors[rule] = val;
+                        _saveSettings();
+                      });
+                    },
+                    onTajweedHighlightingChanged: (rule, val) {
+                      setState(() {
+                        _tajweedHighlighting[rule] = val;
+                        _saveSettings();
+                      });
+                    },
+                    onReset: () {
+                      setState(() {
+                        _coverBackgroundColor = '#1a472a';
+                        _baseTextColor = '#000000';
+                        _tajweedColors = Map.from(defaultTajweedColors);
+                        _tajweedHighlighting = {
+                          for (var r in TajweedRule.values) r: true
+                        };
+                        _saveSettings();
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            _buildFooter(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+      child: Column(
+        children: [
+          // Output Settings
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: IntrinsicHeight(
+                child: Row(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Output Format:',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 8),
                         SegmentedButton<String>(
                           segments: const [
                             ButtonSegment(
@@ -397,59 +650,17 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Instructions Card
-            Card(
-              color: Theme.of(context).colorScheme.secondaryContainer,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.info_outline,
-                        color:
-                            Theme.of(context).colorScheme.onSecondaryContainer),
-                    const SizedBox(width: 16),
+                    const VerticalDivider(width: 32),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _outputFormat == 'HTML'
-                                ? 'How to generate PDF'
-                                : 'How to generate Images',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSecondaryContainer,
-                                ),
+                            'Configuration Presets:',
+                            style: Theme.of(context).textTheme.titleSmall,
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            _outputFormat == 'HTML'
-                                ? '1. Configure your layout and click "Generate HTML".\n'
-                                    '2. The file will open automatically in your browser.\n'
-                                    '3. Use your browser\'s "Print" feature (Ctrl+P / Cmd+P) and select "Save as PDF".\n'
-                                    '4. Ensure "Background graphics" is enabled in print settings for correct colors.'
-                                : '1. Configure your image resolution (DPI).\n'
-                                    '2. Click "Generate" to render PNG files.\n'
-                                    '3. The folder containing the images and glyphs.db will open automatically.',
-                            style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSecondaryContainer,
-                              height: 1.5,
-                            ),
-                          ),
+                          _buildPresetControls(),
                         ],
                       ),
                     ),
@@ -457,852 +668,100 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Page size selection
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+          const SizedBox(height: 8),
+          // Instructions Card
+          Card(
+            color: Theme.of(context).colorScheme.secondaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 20,
+                      color:
+                          Theme.of(context).colorScheme.onSecondaryContainer),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Layout & Typography',
-                          style: Theme.of(context).textTheme.titleMedium,
+                          _outputFormat == 'HTML'
+                              ? 'How to generate PDF'
+                              : 'How to generate Images',
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSecondaryContainer,
+                                  ),
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            TextButton.icon(
-                              onPressed: _showSavePresetDialog,
-                              icon: const Icon(Icons.save_alt),
-                              label: const Text('Save as Preset'),
-                            ),
-                            const SizedBox(width: 8),
-                            PopupMenuButton<PageSize>(
-                              onSelected: (preset) {
-                                setState(() {
-                                  _selectedPageSize = preset;
-                                  _saveSettings();
-                                });
-                              },
-                              itemBuilder: (context) => [
-                                ...PageSize.presets
-                                    .map((p) => PopupMenuItem<PageSize>(
-                                          value: p,
-                                          child: Text('Load ${p.name} Preset'),
-                                        )),
-                                if (_customPresets.isNotEmpty) ...[
-                                  const PopupMenuDivider(),
-                                  ..._customPresets.map((p) =>
-                                      PopupMenuItem<PageSize>(
-                                        value: p,
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                                child:
-                                                    Text('Custom: ${p.name}')),
-                                            IconButton(
-                                              icon: const Icon(
-                                                  Icons.delete_outline,
-                                                  size: 18,
-                                                  color: Colors.red),
-                                              onPressed: () {
-                                                Navigator.pop(context);
-                                                _deletePreset(p);
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      )),
-                                ],
-                              ],
-                              child: const Chip(
-                                label: Text('Load Preset'),
-                                avatar: Icon(Icons.settings_backup_restore,
-                                    size: 18),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          _outputFormat == 'HTML'
+                              ? 'Configure layout and click "Generate HTML". Use browser\'s "Print" -> "Save as PDF" (Enable "Background graphics").'
+                              : 'Configure resolution (DPI) and click "Generate". The folder containing PNGs and glyphs.db will open.',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSecondaryContainer,
+                                  ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    const Text('Page Dimensions',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Width (mm)',
-                                value: _selectedPageSize.widthMm,
-                                helpText:
-                                    'Physical width of the page in millimeters.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(widthMm: v.toInt())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Height (mm)',
-                                value: _selectedPageSize.heightMm,
-                                helpText:
-                                    'Physical height of the page in millimeters.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(heightMm: v.toInt())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Padding (mm)',
-                                value: _selectedPageSize.paddingMm,
-                                helpText:
-                                    'Internal padding between the page edge and the content area.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(paddingMm: v.toInt())))),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Preface Blank Pages',
-                                value: _prefaceBlankPages,
-                                enabled: _outputFormat == 'HTML',
-                                helpText:
-                                    'Number of blank pages to insert after the cover.',
-                                onChanged: (v) => setState(() {
-                                      _prefaceBlankPages = v.toInt();
-                                      _saveSettings();
-                                    }))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildTextInput(
-                                label: 'Cover Color (Hex)',
-                                value: _coverBackgroundColor,
-                                enabled: _outputFormat == 'HTML',
-                                helpText:
-                                    'Background color for the cover page (e.g. #1a472a).',
-                                onChanged: (v) => setState(() {
-                                      _coverBackgroundColor = v;
-                                      _saveSettings();
-                                    }))),
-                        if (_outputFormat == 'PNG') ...[
-                          const SizedBox(width: 12),
-                          Expanded(
-                              child: _buildNumberInput(
-                                  label: 'Resolution (DPI)',
-                                  value: _dpi,
-                                  helpText:
-                                      'Dots Per Inch. Higher values produce larger, higher-quality images.',
-                                  onChanged: (v) => setState(() {
-                                        _dpi = v.toInt();
-                                        _saveSettings();
-                                      }))),
-                        ],
-                      ],
-                    ),
-                    if (_outputFormat == 'PNG') ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildTextInput(
-                              label: 'Base Text Color (Hex)',
-                              value: _baseTextColor,
-                              helpText:
-                                  'Text color for all non-colored text (e.g. #FFFFFF for White, #000000 for Black). Works in PNG mode.',
-                              onChanged: (val) {
-                                setState(() {
-                                  _baseTextColor = val;
-                                  _saveSettings();
-                                });
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Spacer(),
-                          const SizedBox(width: 12),
-                          const Spacer(),
-                        ],
-                      ),
-                      SwitchListTile(
-                        title: const Text('Show Page Header & Legend'),
-                        subtitle: const Text(
-                            'Includes surah name, page number, juz and tajweed color key'),
-                        value: _showDecorations,
-                        contentPadding: EdgeInsets.zero,
-                        onChanged: (val) {
-                          setState(() {
-                            _showDecorations = val;
-                            _saveSettings();
-                          });
-                        },
-                      ),
-                    ],
-                    const Divider(),
-                    const Text('Arabic Typography',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Font Size (px)',
-                                value: _selectedPageSize.fontSize,
-                                helpText:
-                                    'Base size for the Arabic text in pixels.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(fontSize: v.toInt())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Line Height',
-                                value: _selectedPageSize.lineHeight,
-                                isDecimal: true,
-                                helpText:
-                                    'Vertical spacing between lines of Arabic text.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(lineHeight: v.toDouble())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Word Spacing',
-                                value: _selectedPageSize.wordSpacing,
-                                isDecimal: true,
-                                helpText:
-                                    'Horizontal spacing between Arabic words in em.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(wordSpacing: v.toDouble())))),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Surah Header (px)',
-                                value: _selectedPageSize.surahFontSize,
-                                helpText:
-                                    'Font size for the Surah name headers.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(surahFontSize: v.toInt())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Ayah Number (px)',
-                                value: _selectedPageSize.ayaNumberFontSize,
-                                helpText: 'Font size for the Ayah end markers.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            ayaNumberFontSize: v.toInt())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Page Header (px)',
-                                value: _selectedPageSize.headerFontSize,
-                                helpText:
-                                    'Font size for the text at the top of the page (Surah name, page number, Juz).',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(headerFontSize: v.toInt())))),
-                      ],
-                    ),
-                    const Divider(),
-                    const Text('Margins (mm)',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Gutter (Inner)',
-                                value: _selectedPageSize.margins.gutterMm,
-                                isDecimal: true,
-                                helpText:
-                                    'Margin on the binding side of the page (alternates left/right).',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(
-                                            margins: _selectedPageSize.margins
-                                                .copyWith(
-                                                    gutterMm: v.toDouble()))))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Outer',
-                                value: _selectedPageSize.margins.outerMm,
-                                isDecimal: true,
-                                helpText:
-                                    'Margin on the outside edge of the page.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(
-                                            margins: _selectedPageSize.margins
-                                                .copyWith(
-                                                    outerMm: v.toDouble()))))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Top',
-                                value: _selectedPageSize.margins.topMm,
-                                isDecimal: true,
-                                helpText: 'Margin at the top of the page.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(
-                                            margins: _selectedPageSize.margins
-                                                .copyWith(
-                                                    topMm: v.toDouble()))))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Bottom',
-                                value: _selectedPageSize.margins.bottomMm,
-                                isDecimal: true,
-                                helpText: 'Margin at the bottom of the page.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(
-                                            margins: _selectedPageSize.margins
-                                                .copyWith(
-                                                    bottomMm: v.toDouble()))))),
-                      ],
-                    ),
-                    const Divider(),
-                    SwitchListTile(
-                      title: const Text('Include translation (outer column)'),
-                      subtitle: _outputFormat == 'PNG'
-                          ? const Text(
-                              'Translation column is only supported in HTML format',
-                              style: TextStyle(color: Colors.orange))
-                          : null,
-                      value: _includeTranslation && _outputFormat == 'HTML',
-                      contentPadding: EdgeInsets.zero,
-                      onChanged: _outputFormat == 'PNG'
-                          ? null
-                          : (val) {
-                              setState(() {
-                                _includeTranslation = val;
-                                if (_includeTranslation &&
-                                    _selectedTranslationKey == null) {
-                                  _selectedTranslationKey =
-                                      _availableTranslations.isNotEmpty
-                                          ? _availableTranslations.first.key
-                                          : 'english_saheeh';
-                                }
-                              });
-                            },
-                    ),
-                    if (_includeTranslation && _outputFormat == 'HTML') ...[
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: _selectedTranslationKey,
-                        decoration: const InputDecoration(
-                          labelText: 'Translation source',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: _availableTranslations
-                            .map(
-                              (t) => DropdownMenuItem(
-                                value: t.key,
-                                child: Text('${t.name} (${t.language})'),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (val) {
-                          setState(() {
-                            _selectedTranslationKey = val;
-                          });
-                        },
-                      ),
-                      if (_availableTranslations.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            'No translations fetched; using fallback if available.',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                    ],
-                    const Text('Translation Column',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Width Fraction',
-                                value: _selectedPageSize
-                                    .translationWidthFraction,
-                                isDecimal: true,
-                                enabled: _includeTranslation &&
-                                    _outputFormat == 'HTML',
-                                helpText:
-                                    'Percentage of page width allocated to the translation column.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            translationWidthFraction:
-                                                v.toDouble())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Arabic Scale',
-                                value: _selectedPageSize.translationArabicScale,
-                                isDecimal: true,
-                                enabled: _includeTranslation &&
-                                    _outputFormat == 'HTML',
-                                helpText:
-                                    'How much to shrink the Arabic text when translation is enabled.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            translationArabicScale:
-                                                v.toDouble())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Font Size (px)',
-                                value: _selectedPageSize.translationFontSize,
-                                enabled: _includeTranslation &&
-                                    _outputFormat == 'HTML',
-                                helpText:
-                                    'Size of the translation text in pixels.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            translationFontSize: v.toInt())))),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Line Height',
-                                value: _selectedPageSize.translationLineHeight,
-                                isDecimal: true,
-                                enabled: _includeTranslation &&
-                                    _outputFormat == 'HTML',
-                                helpText:
-                                    'Spacing between lines of translation text.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            translationLineHeight:
-                                                v.toDouble())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Compact Threshold',
-                                value: _selectedPageSize
-                                    .translationCompactThreshold,
-                                enabled: _includeTranslation &&
-                                    _outputFormat == 'HTML',
-                                helpText:
-                                    'Character count above which translation switches to inline mode.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            translationCompactThreshold:
-                                                v.toInt())))),
-                      ],
-                    ),
-                    SwitchListTile(
-                      title: const Text('Justify translation text'),
-                      value: _justifyTranslation,
-                      contentPadding: EdgeInsets.zero,
-                      onChanged:
-                          (_includeTranslation && _outputFormat == 'HTML')
-                              ? (val) {
-                                  setState(() {
-                                    _justifyTranslation = val;
-                                    _saveSettings();
-                                  });
-                                }
-                              : null,
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    SwitchListTile(
-                      title: const Text('Include word-by-word translation'),
-                      subtitle: const Text(
-                          'Displays translation under each Arabic word'),
-                      value: _includeWbw,
-                      contentPadding: EdgeInsets.zero,
-                      onChanged: (val) {
-                        setState(() {
-                          _includeWbw = val;
-                        });
-                      },
-                    ),
-                    if (_includeWbw) ...[
-                      const SizedBox(height: 8),
-                      if (_availableWbwLanguages.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Text(
-                            'No WBW languages found in CSV.',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        )
-                      else
-                        DropdownButtonFormField<String>(
-                          value: _selectedWbwLanguage,
-                          decoration: const InputDecoration(
-                            labelText: 'WBW Language',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: _availableWbwLanguages
-                              .map(
-                                (lang) => DropdownMenuItem(
-                                  value: lang,
-                                  child: Text(
-                                      MushafWbwService.getLanguageName(lang)),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (val) {
-                            if (val != null) {
-                              setState(() {
-                                _selectedWbwLanguage = val;
-                              });
-                            }
-                          },
-                        ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'WBW translations contributed by Greentech Apps Foundation',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontStyle: FontStyle.italic,
-                              color: Colors.grey,
-                            ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    const Text('Word-by-Word',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Font Size (px)',
-                                value: _selectedPageSize.wbwFontSize,
-                                enabled: _includeWbw,
-                                helpText:
-                                    'Size of the word-by-word translation text in pixels.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(wbwFontSize: v.toInt())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Arabic Scale',
-                                value: _selectedPageSize.wbwArabicScale,
-                                isDecimal: true,
-                                enabled: _includeWbw,
-                                helpText:
-                                    'How much to shrink the Arabic text when word-by-word translation is enabled.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            wbwArabicScale: v.toDouble())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Arabic Line Height',
-                                value: _selectedPageSize.wbwArabicLineHeight,
-                                isDecimal: true,
-                                enabled: _includeWbw,
-                                helpText:
-                                    'Line height for the Arabic text when word-by-word translation is enabled.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            wbwArabicLineHeight:
-                                                v.toDouble())))),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Trans. Line Height',
-                                value: _selectedPageSize
-                                    .wbwTranslationLineHeight,
-                                isDecimal: true,
-                                enabled: _includeWbw,
-                                helpText:
-                                    'Line height for the word-by-word translation text.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            wbwTranslationLineHeight:
-                                                v.toDouble())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Max Width (mm)',
-                                value: _selectedPageSize.wbwMaxWidthMm,
-                                isDecimal: true,
-                                enabled: _includeWbw,
-                                helpText:
-                                    'Maximum width allowed for a single word-by-word block in millimeters.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            wbwMaxWidthMm: v.toDouble())))),
-                      ],
-                    ),
-                    const Divider(),
-                    const Text('Legend & TOC',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Legend Font (px)',
-                                value: _selectedPageSize.legendFontSize,
-                                helpText:
-                                    'Font size for the Tajweed color legend text.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(legendFontSize: v.toInt())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Legend Color Size',
-                                value: _selectedPageSize.legendColorSize,
-                                helpText:
-                                    'Size of the color boxes in the Tajweed legend.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            legendColorSize: v.toInt())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Legend Gap',
-                                value: _selectedPageSize.legendGap,
-                                helpText:
-                                    'Spacing between different items in the Tajweed legend.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(legendGap: v.toInt())))),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Legend Item Gap',
-                                value: _selectedPageSize.legendItemGap,
-                                helpText:
-                                    'Spacing between the color box and the label within a legend item.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(legendItemGap: v.toInt())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'Legend Padding',
-                                value: _selectedPageSize.legendPadding,
-                                helpText: 'Top padding for the legend section.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(legendPadding: v.toInt())))),
-                        const SizedBox(width: 12),
-                        const Spacer(),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'TOC Font (px)',
-                                value: _selectedPageSize.tocFontSize,
-                                enabled: _outputFormat == 'HTML',
-                                helpText:
-                                    'Font size for the Table of Contents entries.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize = _selectedPageSize
-                                        .copyWith(tocFontSize: v.toInt())))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildNumberInput(
-                                label: 'TOC Entries/Page',
-                                value: _selectedPageSize.tocEntriesPerPage,
-                                enabled: _outputFormat == 'HTML',
-                                helpText:
-                                    'Number of Surah entries to display per page in the Table of Contents.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            tocEntriesPerPage: v.toInt())))),
-                      ],
-                    ),
-                    const Divider(),
-                    const Text('Custom Text',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildTextInput(
-                                label: 'Cover Title',
-                                value: _selectedPageSize.textConfig.coverTitle,
-                                enabled: _outputFormat == 'HTML',
-                                helpText: 'Main title on the cover page.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            textConfig: _selectedPageSize
-                                                .textConfig
-                                                .copyWith(coverTitle: v))))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildTextInput(
-                                label: 'Cover Subtitle',
-                                value: _selectedPageSize
-                                    .textConfig.coverSubtitle,
-                                enabled: _outputFormat == 'HTML',
-                                helpText: 'Subtitle on the cover page.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            textConfig: _selectedPageSize
-                                                .textConfig
-                                                .copyWith(coverSubtitle: v))))),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildTextInput(
-                                label: 'TOC Title',
-                                value: _selectedPageSize.textConfig.tocTitle,
-                                enabled: _outputFormat == 'HTML',
-                                helpText: 'Title for the Table of Contents.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            textConfig: _selectedPageSize
-                                                .textConfig
-                                                .copyWith(tocTitle: v))))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildTextInput(
-                                label: 'Blank Page Text',
-                                value: _selectedPageSize
-                                    .textConfig.blankPageText,
-                                enabled: _outputFormat == 'HTML',
-                                helpText:
-                                    'Text displayed on the intentionally blank page.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            textConfig: _selectedPageSize
-                                                .textConfig
-                                                .copyWith(blankPageText: v))))),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                            child: _buildTextInput(
-                                label: 'Translation Label',
-                                value: _selectedPageSize
-                                    .textConfig.translationLabel,
-                                enabled: _outputFormat == 'HTML',
-                                helpText:
-                                    'Label for the translation on the cover page.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            textConfig: _selectedPageSize
-                                                .textConfig
-                                                .copyWith(
-                                                    translationLabel: v))))),
-                        const SizedBox(width: 12),
-                        Expanded(
-                            child: _buildTextInput(
-                                label: 'WBW Label',
-                                value: _selectedPageSize.textConfig.wbwLabel,
-                                enabled: _outputFormat == 'HTML',
-                                helpText:
-                                    'Label for the word-by-word translation on the cover page.',
-                                onChanged: (v) => setState(() =>
-                                    _selectedPageSize =
-                                        _selectedPageSize.copyWith(
-                                            textConfig: _selectedPageSize
-                                                .textConfig
-                                                .copyWith(wbwLabel: v))))),
-                      ],
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Page Range & Preview Controls
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
+  Widget _buildFooter() {
+    return Container(
+      padding: const EdgeInsets.all(24.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withValues(alpha: 0.3),
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).dividerColor,
+          ),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Page Range Controls
+              Expanded(
+                flex: 2,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Generation Controls',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    // Preview Row
                     Row(
                       children: [
                         Expanded(
-                          child: _buildNumberInput(
-                            label: 'Preview Page',
-                            value: _previewPage,
-                            helpText:
-                                'The specific page to show when clicking the Preview button.',
-                            onChanged: (v) => _previewPage = v.toInt(),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        ElevatedButton.icon(
-                          onPressed: _isGenerating
-                              ? null
-                              : () => _generateHtml(isPreview: true),
-                          icon: const Icon(Icons.remove_red_eye),
-                          label: const Text('Preview'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    // Start/End Page Row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildNumberInput(
+                          child: NumberInput(
                             label: 'Start Page',
                             value: _startPage,
-                            helpText:
-                                'The first page of the Quran to include in the generated HTML.',
                             onChanged: (v) => _startPage = v.toInt(),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: _buildNumberInput(
+                          child: NumberInput(
                             label: 'End Page',
                             value: _endPage,
-                            helpText:
-                                'The last page of the Quran to include in the generated HTML.',
                             onChanged: (v) => _endPage = v.toInt(),
                           ),
                         ),
@@ -1316,149 +775,106 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-
-            // Generate button
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: _isGenerating ? null : _generateHtml,
-                icon: _isGenerating
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.file_download),
-                label: Text(_isGenerating ? 'Generating...' : 'Generate'),
-                style: ElevatedButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Progress and status
-            if (_isGenerating || _statusMessage.isNotEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Status',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      if (_isGenerating && _totalPages > 0) ...[
-                        LinearProgressIndicator(
-                          value: _currentPage / _totalPages,
-                        ),
-                        const SizedBox(height: 8),
-                        Text('Processing page $_currentPage of $_totalPages'),
-                      ] else if (_statusMessage.isNotEmpty &&
-                          !_isGenerating) ...[
-                        const SizedBox(height: 8),
-                        Text(_statusMessage),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-
-            // Output path
-            if (_outputPath != null) ...[
-              const SizedBox(height: 16),
-              Card(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green, width: 2),
-                  ),
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.check_circle, color: Colors.green),
-                          const SizedBox(width: 8),
-                          Text(
-                            _outputFormat == 'HTML'
-                                ? 'HTML Generated Successfully!'
-                                : 'Images Generated Successfully!',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      SelectableText(
-                        'Saved to: $_outputPath',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        onPressed: _openOutputFolder,
-                        icon: const Icon(Icons.folder_open),
-                        label: const Text('Open Folder'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 24),
-
-            // Tajweed color legend
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
+              const SizedBox(width: 24),
+              // Preview & Generate
+              Expanded(
+                flex: 3,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Tajweed Color Legend',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: NumberInput(
+                            label: 'Preview Page',
+                            value: _previewPage,
+                            onChanged: (v) => _previewPage = v.toInt(),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: _isGenerating
+                              ? null
+                              : () => _generateHtml(isPreview: true),
+                          icon: const Icon(Icons.remove_red_eye),
+                          label: const Text('Preview'),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 8,
-                      children: const [
-                        _ColorLegendItem(
-                            color: Color(0xFF4CAF50), label: 'Lafzatullah'),
-                        _ColorLegendItem(
-                            color: Color(0xFF06B0B6), label: 'Izhar'),
-                        _ColorLegendItem(
-                            color: Color(0xFFB71C1C), label: 'Ikhfaa'),
-                        _ColorLegendItem(
-                            color: Color(0xFFF06292),
-                            label: 'Idgham w/ Ghunna'),
-                        _ColorLegendItem(
-                            color: Color(0xFF2196F3), label: 'Iqlab'),
-                        _ColorLegendItem(
-                            color: Color(0xFF7B8F0A), label: 'Qalqala'),
-                        _ColorLegendItem(
-                            color: Color(0xFFFF9800), label: 'Ghunna'),
-                        _ColorLegendItem(
-                            color: Color(0xFF8E64D6), label: 'Prolonging'),
-                      ],
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isGenerating ? null : _generateHtml,
+                        icon: _isGenerating
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.file_download),
+                        label: Text(_isGenerating
+                            ? 'Generating...'
+                            : _outputFormat == 'HTML'
+                                ? 'Generate HTML'
+                                : 'Generate Images'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primaryContainer,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
+            ],
+          ),
+          if (_isGenerating || _statusMessage.isNotEmpty || _outputPath != null)
+            const SizedBox(height: 16),
+          // Progress and Status
+          if (_isGenerating || _statusMessage.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_isGenerating && _totalPages > 0) ...[
+                  LinearProgressIndicator(
+                    value: _currentPage / _totalPages,
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                Text(_statusMessage,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          // Output path
+          if (_outputPath != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SelectableText(
+                    'Saved: $_outputPath',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.green,
+                        ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _openOutputFolder,
+                  icon: const Icon(Icons.folder_open, size: 16),
+                  label: const Text('Open'),
+                  style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact),
+                ),
+              ],
             ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -1526,6 +942,9 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
           pageSize: _selectedPageSize,
           prefaceBlankPages: _prefaceBlankPages,
           coverBackgroundColor: _coverBackgroundColor,
+          baseTextColor: _baseTextColor,
+          tajweedColors: _tajweedColors,
+          tajweedHighlighting: _tajweedHighlighting,
           justifyTranslation: _justifyTranslation,
           includeTranslation: _includeTranslation,
           includeWbw: _includeWbw,
@@ -1539,6 +958,13 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
           translationService: _includeTranslation ? _translationService : null,
           localTranslationService:
               _includeTranslation ? _localTranslationService : null,
+          // Labels & Content
+          coverTitle: _coverTitle,
+          coverSubtitle: _coverSubtitle,
+          tocTitle: _tocTitle,
+          blankPageText: _blankPageText,
+          translationLabel: _translationLabel,
+          wbwLabel: _wbwLabel,
         );
         final html = await generator.generateHtml(
           startPage: start,
@@ -1557,8 +983,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         });
 
         final prefix = isPreview
-            ? 'preview_page_${start}'
-            : 'mushaf_${_selectedPageSize.name}_pages_${start}_to_${end}';
+            ? 'preview_page_$start'
+            : 'mushaf_${_selectedPageSize.name}_pages_${start}_to_$end';
         final fileName = '${prefix}_$timestamp.html';
         final file = File('${mushafDir.path}/$fileName');
         await file.writeAsString(html);
@@ -1566,8 +992,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
       } else {
         // Generate PNGs
         final prefix = isPreview
-            ? 'preview_image_${start}'
-            : 'mushaf_${_selectedPageSize.name}_batch_${start}_to_${end}';
+            ? 'preview_image_$start'
+            : 'mushaf_${_selectedPageSize.name}_batch_${start}_to_$end';
         final batchFolderName = '${prefix}_$timestamp';
         final batchDir = Directory('${mushafDir.path}/$batchFolderName');
 
@@ -1579,6 +1005,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
           wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,
           showDecorations: _showDecorations,
           baseTextColor: _baseTextColor,
+          tajweedColors: _tajweedColors,
+          tajweedHighlighting: _tajweedHighlighting,
         );
 
         await generator.generateImages(
@@ -1620,6 +1048,80 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     }
   }
 
+  Widget _buildPresetControls() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _showSavePresetDialog,
+          icon: const Icon(Icons.save_alt, size: 18),
+          label: const Text('Save as Preset'),
+          style: OutlinedButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+        const SizedBox(width: 12),
+        PopupMenuButton<PageSize>(
+          onSelected: (preset) {
+            setState(() {
+              _selectedPageSize = preset;
+              _saveSettings();
+            });
+          },
+          itemBuilder: (context) => [
+            ...PageSize.presets.map(
+                (p) => PopupMenuItem(value: p, child: Text('Load ${p.name}'))),
+            if (_customPresets.isNotEmpty) ...[
+              const PopupMenuDivider(),
+              ..._customPresets.map((p) => PopupMenuItem(
+                    value: p,
+                    child: Row(
+                      children: [
+                        Expanded(child: Text('Custom: ${p.name}')),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline,
+                              size: 18, color: Colors.red),
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _deletePreset(p);
+                          },
+                        ),
+                      ],
+                    ),
+                  )),
+            ],
+          ],
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.settings_backup_restore,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.onSecondaryContainer),
+                const SizedBox(width: 8),
+                Text(
+                  'Load Preset',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSecondaryContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.arrow_drop_down,
+                    color: Theme.of(context).colorScheme.onSecondaryContainer),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _openFileInBrowser(String filePath) {
     if (Platform.isMacOS) {
       Process.run('open', [filePath]);
@@ -1644,163 +1146,5 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     } else if (Platform.isLinux) {
       Process.run('xdg-open', [folder]);
     }
-  }
-}
-
-class _ColorLegendItem extends StatelessWidget {
-  final Color color;
-  final String label;
-
-  const _ColorLegendItem({required this.color, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
-      ],
-    );
-  }
-}
-
-class _NumberInput extends StatefulWidget {
-  final String label;
-  final num value;
-  final ValueChanged<num> onChanged;
-  final bool isDecimal;
-  final Widget? suffix;
-  final bool enabled;
-
-  const _NumberInput({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-    this.isDecimal = false,
-    this.suffix,
-    this.enabled = true,
-  });
-
-  @override
-  State<_NumberInput> createState() => _NumberInputState();
-}
-
-class _NumberInputState extends State<_NumberInput> {
-  late TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.value.toString());
-  }
-
-  @override
-  void didUpdateWidget(_NumberInput oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Only update controller if the value changed from outside (e.g. preset loaded)
-    // and it's different from what's currently being typed
-    if (widget.value != oldWidget.value) {
-      final currentVal = widget.isDecimal
-          ? double.tryParse(_controller.text)
-          : int.tryParse(_controller.text);
-      if (widget.value != currentVal) {
-        _controller.text = widget.value.toString();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      enabled: widget.enabled,
-      decoration: InputDecoration(
-        labelText: widget.label,
-        border: const OutlineInputBorder(),
-        isDense: true,
-        suffixIcon: widget.suffix,
-      ),
-      keyboardType: TextInputType.numberWithOptions(decimal: widget.isDecimal),
-      controller: _controller,
-      onChanged: (val) {
-        final parsed =
-            widget.isDecimal ? double.tryParse(val) : int.tryParse(val);
-        if (parsed != null) {
-          widget.onChanged(parsed);
-        }
-      },
-    );
-  }
-}
-
-class _TextInput extends StatefulWidget {
-  final String label;
-  final String value;
-  final ValueChanged<String> onChanged;
-  final Widget? suffix;
-  final bool enabled;
-
-  const _TextInput({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-    this.suffix,
-    this.enabled = true,
-  });
-
-  @override
-  State<_TextInput> createState() => _TextInputState();
-}
-
-class _TextInputState extends State<_TextInput> {
-  late TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.value);
-  }
-
-  @override
-  void didUpdateWidget(_TextInput oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.value != oldWidget.value && widget.value != _controller.text) {
-      _controller.text = widget.value;
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      enabled: widget.enabled,
-      decoration: InputDecoration(
-        labelText: widget.label,
-        border: const OutlineInputBorder(),
-        isDense: true,
-        suffixIcon: widget.suffix,
-      ),
-      controller: _controller,
-      onChanged: widget.onChanged,
-    );
   }
 }
