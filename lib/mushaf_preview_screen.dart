@@ -146,8 +146,6 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     _previewPage = _prefs.getInt('preview_page') ?? 1;
     _includeTranslation = _prefs.getBool('include_translation') ?? false;
     _translationSource = _prefs.getString('translation_source') ?? 'QuranEnc';
-    _tarteelFilePath = _prefs.getString('tarteel_file_path');
-    _tanzilFilePath = _prefs.getString('tanzil_file_path');
     _includeWbw = _prefs.getBool('include_wbw') ?? false;
     _selectedWbwLanguage = _prefs.getString('wbw_language') ?? 'en';
     _selectedTranslationKey = _prefs.getString('translation_key');
@@ -229,12 +227,6 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     await _prefs.setInt('preview_page', _previewPage);
     await _prefs.setBool('include_translation', _includeTranslation);
     await _prefs.setString('translation_source', _translationSource);
-    if (_tarteelFilePath != null) {
-      await _prefs.setString('tarteel_file_path', _tarteelFilePath!);
-    }
-    if (_tanzilFilePath != null) {
-      await _prefs.setString('tanzil_file_path', _tanzilFilePath!);
-    }
     await _prefs.setBool('include_wbw', _includeWbw);
     await _prefs.setString('wbw_language', _selectedWbwLanguage);
     if (_selectedTranslationKey != null) {
@@ -1026,6 +1018,19 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   }
 
   Future<void> _generateHtml({bool isPreview = false}) async {
+    // Validate translation file selection for local sources
+    if (_includeTranslation) {
+      if (_translationSource == 'Tarteel' && _tarteelFilePath == null) {
+        _showHelpDialog(
+            'File Required', 'Please select a Tarteel SQLite database file.');
+        return;
+      }
+      if (_translationSource == 'Tanzil' && _tanzilFilePath == null) {
+        _showHelpDialog('File Required', 'Please select a Tanzil text file.');
+        return;
+      }
+    }
+
     final start = isPreview ? _previewPage : _startPage;
     final end = isPreview ? _previewPage : _endPage;
 
