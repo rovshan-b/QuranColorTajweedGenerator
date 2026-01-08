@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
 import 'mushaf_db_initializer.dart';
 import 'mushaf_db_reader.dart';
 import 'mushaf_html_generator.dart';
@@ -13,6 +14,7 @@ import 'tajweed_color_mapper.dart';
 import 'quran_enc_translation_service.dart';
 import 'mushaf_wbw_service.dart';
 import 'local_translation_service.dart';
+import 'tanzil_translation_service.dart';
 
 import 'package:mushaf_generator/ui/screens/mushaf_preview/tabs/general_labels_tab.dart';
 import 'package:mushaf_generator/ui/screens/mushaf_preview/tabs/layout_typography_tab.dart';
@@ -38,11 +40,20 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   // Translation controls
   bool _includeTranslation = false;
   String? _selectedTranslationKey;
+
+  // Translation source configuration
+  // Options: 'QuranEnc', 'Tarteel', 'Tanzil'
+  String _translationSource = 'QuranEnc';
+  String? _tarteelFilePath;
+  String? _tanzilFilePath;
+
   List<TranslationInfo> _availableTranslations = const [];
   final QuranEncTranslationService _translationService =
       QuranEncTranslationService();
   final LocalTranslationService _localTranslationService =
       LocalTranslationService();
+  final TanzilTranslationService _tanzilTranslationService =
+      TanzilTranslationService();
 
   // Word-by-word controls
   bool _includeWbw = false;
@@ -128,6 +139,9 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     _endPage = _prefs.getInt('end_page') ?? 604;
     _previewPage = _prefs.getInt('preview_page') ?? 1;
     _includeTranslation = _prefs.getBool('include_translation') ?? false;
+    _translationSource = _prefs.getString('translation_source') ?? 'QuranEnc';
+    _tarteelFilePath = _prefs.getString('tarteel_file_path');
+    _tanzilFilePath = _prefs.getString('tanzil_file_path');
     _includeWbw = _prefs.getBool('include_wbw') ?? false;
     _selectedWbwLanguage = _prefs.getString('wbw_language') ?? 'en';
     _selectedTranslationKey = _prefs.getString('translation_key');
@@ -190,6 +204,13 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
     await _prefs.setInt('end_page', _endPage);
     await _prefs.setInt('preview_page', _previewPage);
     await _prefs.setBool('include_translation', _includeTranslation);
+    await _prefs.setString('translation_source', _translationSource);
+    if (_tarteelFilePath != null) {
+      await _prefs.setString('tarteel_file_path', _tarteelFilePath!);
+    }
+    if (_tanzilFilePath != null) {
+      await _prefs.setString('tanzil_file_path', _tanzilFilePath!);
+    }
     await _prefs.setBool('include_wbw', _includeWbw);
     await _prefs.setString('wbw_language', _selectedWbwLanguage);
     if (_selectedTranslationKey != null) {
@@ -324,26 +345,29 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
   Future<void> _loadTranslations() async {
     try {
       final apiTranslations = await _translationService.fetchTranslations();
-      final localTranslations =
-          await _localTranslationService.getLocalTranslations();
 
-      final allTranslations = [...localTranslations, ...apiTranslations];
-
-      if (allTranslations.isEmpty) {
+      if (apiTranslations.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
-                  'Failed to fetch translations. Check your connection and local resources.'),
+              content:
+                  Text('Failed to fetch translations. Check your connection.'),
               backgroundColor: Colors.orange,
             ),
           );
         }
       }
 
-      _availableTranslations = allTranslations;
+      _availableTranslations = apiTranslations;
+
+      // Validate that the selected key exists in the new list
+      if (_selectedTranslationKey != null &&
+          !apiTranslations.any((t) => t.key == _selectedTranslationKey)) {
+        _selectedTranslationKey = null;
+      }
+
       _selectedTranslationKey = _selectedTranslationKey ??
-          (allTranslations.isNotEmpty ? allTranslations.first.key : null);
+          (apiTranslations.isNotEmpty ? apiTranslations.first.key : null);
       if (mounted) {
         setState(() {});
       }
@@ -355,6 +379,52 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
             backgroundColor: Colors.red,
           ),
         );
+      }
+    }
+  }
+
+  Future<void> _pickTranslationFile(String source) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: source == 'Tarteel' ? ['db', 'sqlite'] : ['txt'],
+    );
+
+    if (result != null && result.files.single.path != null) {
+      final path = result.files.single.path!;
+      bool isValid = false;
+
+      if (source == 'Tarteel') {
+        isValid = await _localTranslationService.verifyFile(path);
+      } else {
+        isValid = await _tanzilTranslationService.verifyFile(path);
+      }
+
+      if (isValid) {
+        setState(() {
+          if (source == 'Tarteel') {
+            _tarteelFilePath = path;
+          } else {
+            _tanzilFilePath = path;
+          }
+        });
+        await _saveSettings();
+      } else {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Invalid File'),
+              content: const Text(
+                  'The selected file does not contain exactly 6236 ayahs. Please select a valid translation file.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
       }
     }
   }
@@ -381,6 +451,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
             Material(
               color: Theme.of(context).colorScheme.surface,
               child: const TabBar(
+                isScrollable: true,
                 tabs: [
                   Tab(
                     child: Row(
@@ -517,6 +588,9 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                     selectedPageSize: _selectedPageSize,
                     outputFormat: _outputFormat,
                     includeTranslation: _includeTranslation,
+                    translationSource: _translationSource,
+                    tarteelFilePath: _tarteelFilePath,
+                    tanzilFilePath: _tanzilFilePath,
                     selectedTranslationKey: _selectedTranslationKey,
                     availableTranslations: _availableTranslations,
                     includeWbw: _includeWbw,
@@ -536,6 +610,13 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                         _saveSettings();
                       });
                     },
+                    onTranslationSourceChanged: (val) {
+                      setState(() {
+                        _translationSource = val;
+                        _saveSettings();
+                      });
+                    },
+                    onPickFile: _pickTranslationFile,
                     onTranslationKeyChanged: (val) {
                       setState(() {
                         _selectedTranslationKey = val;
@@ -958,6 +1039,9 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
           tajweedHighlighting: _tajweedHighlighting,
           justifyTranslation: _justifyTranslation,
           includeTranslation: _includeTranslation,
+          translationSource: _translationSource,
+          tarteelFilePath: _tarteelFilePath,
+          tanzilFilePath: _tanzilFilePath,
           includeWbw: _includeWbw,
           wbwLanguage: _includeWbw ? _selectedWbwLanguage : null,
           wbwLanguageName: _includeWbw
@@ -969,6 +1053,8 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
           translationService: _includeTranslation ? _translationService : null,
           localTranslationService:
               _includeTranslation ? _localTranslationService : null,
+          tanzilTranslationService:
+              _includeTranslation ? _tanzilTranslationService : null,
           // Labels & Content
           coverTitle: _coverTitle,
           coverSubtitle: _coverSubtitle,

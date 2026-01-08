@@ -52,6 +52,8 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
   flutter_colorpicker: ^1.1.0
+  file_picker: ^10.3.8
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -100,7 +102,6 @@ flutter:
     - assets/words/wbw-words.csv
     - resources/qpc-v4-tajweed-15-lines.db
     - resources/uthmani.db
-    - assets/translations/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

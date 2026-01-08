@@ -1,49 +1,36 @@
-import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/services.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'quran_enc_translation_service.dart';
 
 /// Service for reading translations from local SQLite databases.
 class LocalTranslationService {
-  /// Returns a list of available local translations from the bundled JSON manifest.
-  Future<List<TranslationInfo>> getLocalTranslations() async {
+  /// Verifies that an external Tarteel (SQLite) file has exactly 6236 ayas in the 'translation' table.
+  Future<bool> verifyFile(String filePath) async {
+    Database? db;
     try {
-      final jsonContent =
-          await rootBundle.loadString('assets/translations/translations.json');
-      final List<dynamic> translations = json.decode(jsonContent);
-
-      return translations.map((item) {
-        return TranslationInfo(
-          key: 'local:${item['file']}',
-          name: item['name'] as String,
-          language: item['language_iso_code'] as String? ??
-              item['language'] as String,
-        );
-      }).toList();
+      if (!await File(filePath).exists()) return false;
+      db = await openDatabase(filePath, readOnly: true);
+      final result = await db.rawQuery('SELECT COUNT(*) FROM translation');
+      final count = result.isNotEmpty ? (result.first.values.first as int?) : 0;
+      return count == 6236;
     } catch (e) {
-      print('Error loading local translations manifest: $e');
-      return [];
+      return false;
+    } finally {
+      await db?.close();
     }
   }
 
-  /// Fetch all ayah translations for a given surah from a local database.
-  Future<Map<int, String>> fetchSurahTranslations(
-      String fileName, int surahNumber) async {
+  /// Fetch translations from an external SQLite file at the given path.
+  Future<Map<int, String>> fetchSurahTranslationsFromPath(
+      String filePath, int surahNumber) async {
     final result = <int, String>{};
     Database? db;
 
     try {
-      final appSupportDir = await getApplicationSupportDirectory();
-      final dbPath = p.join(appSupportDir.path, 'translations', fileName);
-
-      if (!await File(dbPath).exists()) {
+      if (!await File(filePath).exists()) {
         return result;
       }
 
-      db = await openDatabase(dbPath, readOnly: true);
+      db = await openDatabase(filePath, readOnly: true);
 
       final List<Map<String, dynamic>> maps = await db.query(
         'translation',
@@ -60,7 +47,7 @@ class LocalTranslationService {
         }
       }
     } catch (e) {
-      print('Error reading local translation: $e');
+      print('Error reading external local translation: $e');
     } finally {
       await db?.close();
     }

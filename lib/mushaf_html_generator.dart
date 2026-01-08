@@ -10,6 +10,7 @@ import 'mushaf_page_config.dart';
 import 'quran_enc_translation_service.dart';
 import 'mushaf_wbw_service.dart';
 import 'local_translation_service.dart';
+import 'tanzil_translation_service.dart';
 
 /// Generates HTML output for Mushaf pages with Tajweed coloring
 class MushafHtmlGenerator {
@@ -19,10 +20,14 @@ class MushafHtmlGenerator {
   final PageSize pageSize;
   final BookMargins margins;
   final bool includeTranslation;
+  final String translationSource;
+  final String? tarteelFilePath;
+  final String? tanzilFilePath;
   final bool includeWbw;
   final String? wbwLanguage;
   final QuranEncTranslationService? translationService;
   final LocalTranslationService? localTranslationService;
+  final TanzilTranslationService? tanzilTranslationService;
   final String? translationKey;
   final String? translationName;
   final String? translationLanguage;
@@ -55,10 +60,14 @@ class MushafHtmlGenerator {
     this.pageSize = PageSize.a4,
     BookMargins? margins,
     this.includeTranslation = false,
+    this.translationSource = 'QuranEnc',
+    this.tarteelFilePath,
+    this.tanzilFilePath,
     this.includeWbw = false,
     this.wbwLanguage,
     this.translationService,
     this.localTranslationService,
+    this.tanzilTranslationService,
     this.translationKey,
     this.translationName,
     this.translationLanguage,
@@ -819,17 +828,7 @@ class MushafHtmlGenerator {
     Map<int, Set<int>> ayahsBySurah,
   ) async {
     final buffer = StringBuffer();
-    if (!includeTranslation || translationKey == null) {
-      buffer.writeln('<div class="translation-wrapper"></div>');
-      return buffer.toString();
-    }
-
-    final isLocal = translationKey!.startsWith('local:');
-    if (isLocal && localTranslationService == null) {
-      buffer.writeln('<div class="translation-wrapper"></div>');
-      return buffer.toString();
-    }
-    if (!isLocal && translationService == null) {
+    if (!includeTranslation) {
       buffer.writeln('<div class="translation-wrapper"></div>');
       return buffer.toString();
     }
@@ -840,14 +839,23 @@ class MushafHtmlGenerator {
       final surah = entry.key;
       final ayahs = entry.value;
 
-      Map<int, String> surahTranslations;
-      if (isLocal) {
-        final fileName = translationKey!.substring(6); // remove 'local:'
-        surahTranslations = await localTranslationService!
-            .fetchSurahTranslations(fileName, surah);
-      } else {
+      Map<int, String> surahTranslations = {};
+
+      if (translationSource == 'QuranEnc' &&
+          translationKey != null &&
+          translationService != null) {
         surahTranslations = await translationService!
             .fetchSurahTranslations(translationKey!, surah);
+      } else if (translationSource == 'Tarteel' &&
+          tarteelFilePath != null &&
+          localTranslationService != null) {
+        surahTranslations = await localTranslationService!
+            .fetchSurahTranslationsFromPath(tarteelFilePath!, surah);
+      } else if (translationSource == 'Tanzil' &&
+          tanzilFilePath != null &&
+          tanzilTranslationService != null) {
+        surahTranslations = await tanzilTranslationService!
+            .fetchSurahTranslations(tanzilFilePath!, surah);
       }
 
       for (final ayah in ayahs) {
