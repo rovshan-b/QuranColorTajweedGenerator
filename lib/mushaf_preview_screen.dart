@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
@@ -1005,16 +1006,27 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
         // Get selected translation name and language for cover page and surah headers
         String? translationName;
         String? translationLanguage;
-        if (_includeTranslation && _selectedTranslationKey != null) {
-          try {
-            final info = _availableTranslations.firstWhere(
-              (t) => t.key == _selectedTranslationKey,
-            );
-            translationName = '${info.name} (${info.language})';
-            translationLanguage = info.language.toLowerCase();
-          } catch (_) {
-            translationName = _selectedTranslationKey;
-            translationLanguage = 'en'; // fallback to English
+        if (_includeTranslation) {
+          if (_translationSource == 'QuranEnc' &&
+              _selectedTranslationKey != null) {
+            try {
+              final info = _availableTranslations.firstWhere(
+                (t) => t.key == _selectedTranslationKey,
+              );
+              translationName = '${info.name} (${info.language})';
+              translationLanguage = info.language.toLowerCase();
+            } catch (_) {
+              translationName = _selectedTranslationKey;
+              translationLanguage = 'en'; // fallback to English
+            }
+          } else if (_translationSource == 'Tarteel' &&
+              _tarteelFilePath != null) {
+            translationName = p.basename(_tarteelFilePath!);
+            translationLanguage = 'en';
+          } else if (_translationSource == 'Tanzil' &&
+              _tanzilFilePath != null) {
+            translationName = p.basename(_tanzilFilePath!);
+            translationLanguage = 'en';
           }
         }
 
