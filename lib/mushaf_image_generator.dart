@@ -187,7 +187,7 @@ class MushafImageGenerator {
     // 3. Draw Page Header (if enabled)
     if (showDecorations) {
       await _drawPageHeader(canvas, pageNum, pxWidth.toDouble(), topPx,
-          leftPadding, rightPadding, drawWidth);
+          leftPadding, rightPadding, drawWidth, isRightSide);
     }
 
     // 4. Draw Content starting at offset position
@@ -271,7 +271,8 @@ class MushafImageGenerator {
       double y,
       double leftPadding,
       double rightPadding,
-      double drawWidth) async {
+      double drawWidth,
+      bool isRightSide) async {
     final lines = await _dbReader.getPageLines(pageNum);
 
     // Find first surah/ayah for header
@@ -318,15 +319,38 @@ class MushafImageGenerator {
     centerPainter.paint(
         canvas, ui.Offset((pxWidth - centerPainter.width) / 2, y));
 
-    // 2. Draw Surah Name (Right Side)
+    // 2. Draw Surah Name and Juz Name (Positions based on Parity)
     if (firstSurah <= 0 || firstSurah > 114) {
       throw Exception(
           'Invalid Surah Number for page $pageNum: $firstSurah (header generation)');
     }
+
     final name = surahNames[firstSurah - 1];
-    final surahName = 'سُورَةُ $name';
+    final surahNameStr = 'سُورَةُ $name';
+
+    final juzNum = getJuzForPosition(firstSurah, firstAyah);
+    final juzNameStr =
+        (juzNum > 0 && juzNum <= juzNames.length) ? juzNames[juzNum - 1] : '';
+
+    final String leftText;
+    final String rightText;
+
+    // For RTL books:
+    // Right Page (isRightSide=true): Gutter Left (Inner), Outer Right.
+    // Left Page (isRightSide=false): Gutter Right (Inner), Outer Left.
+    // User wants: Juz -> Inner, Surah -> Outer.
+    if (isRightSide) {
+      // Inner is Left, Outer is Right.
+      leftText = juzNameStr;
+      rightText = surahNameStr;
+    } else {
+      // Inner is Right, Outer is Left.
+      leftText = surahNameStr;
+      rightText = juzNameStr;
+    }
+
     final rightPainter = TextPainter(
-      text: TextSpan(text: surahName, style: style),
+      text: TextSpan(text: rightText, style: style),
       textDirection: TextDirection.rtl,
       textAlign: TextAlign.right,
     );
@@ -334,12 +358,8 @@ class MushafImageGenerator {
     rightPainter.paint(
         canvas, ui.Offset(pxWidth - rightPadding - rightPainter.width, y));
 
-    // 3. Draw Juz Name (Left Side)
-    final juzNum = getJuzForPosition(firstSurah, firstAyah);
-    final juzName =
-        (juzNum > 0 && juzNum <= juzNames.length) ? juzNames[juzNum - 1] : '';
     final leftPainter = TextPainter(
-      text: TextSpan(text: juzName, style: style),
+      text: TextSpan(text: leftText, style: style),
       textDirection: TextDirection.rtl,
       textAlign: TextAlign.left,
     );

@@ -13,6 +13,8 @@ A Flutter desktop application designed to generate high-quality, print-ready HTM
 Get the latest version for your operating system:
 
 - **[Download for Windows (.exe)](https://github.com/rovshan-b/QuranColorTajweedGenerator/blob/master/INSTALLERS/Windows/MushafGenerator-x86_64-1.0.0+7-Installer.exe?raw=true)**
+- **[Windows Store](https://apps.microsoft.com/detail/9pc7hc5dhmd2?hl=en-US&gl=FI)**
+
 - **[Download for macOS (.dmg)](https://github.com/rovshan-b/QuranColorTajweedGenerator/blob/master/INSTALLERS/macOS/MushafGenerator-Installer.dmg?raw=true)**
 
 ## Screenshots

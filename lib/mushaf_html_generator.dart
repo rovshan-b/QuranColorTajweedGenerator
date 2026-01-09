@@ -322,18 +322,18 @@ class MushafHtmlGenerator {
       color: #555;
     }
     
-    .page-header-surah {
+    .page-header-right {
       flex: 1;
       text-align: right;
     }
     
-    .page-header-number {
+    .page-header-center {
       flex: 1;
       text-align: center;
       font-weight: bold;
     }
     
-    .page-header-juz {
+    .page-header-left {
       flex: 1;
       text-align: left;
     }
@@ -777,9 +777,19 @@ class MushafHtmlGenerator {
     buffer.writeln('<div id="page-${pageNumber}" class="page $pageClass">');
     buffer.writeln('<div class="page-content">');
     buffer.writeln('<div class="page-header">');
-    buffer.writeln('<span class="page-header-surah">$surahName</span>');
-    buffer.writeln('<span class="page-header-number">$pageNumber</span>');
-    buffer.writeln('<span class="page-header-juz">$juzName</span>');
+    if (isRight) {
+      // Right Page (Odd Mushaf Index): Gutter is on the LEFT (Inner), Outer is on the RIGHT.
+      // Logic: Inner -> Juz, Outer -> Surah.
+      buffer.writeln('<span class="page-header-right">$surahName</span>');
+      buffer.writeln('<span class="page-header-center">$pageNumber</span>');
+      buffer.writeln('<span class="page-header-left">$juzName</span>');
+    } else {
+      // Left Page (Even Mushaf Index): Gutter is on the RIGHT (Inner), Outer is on the LEFT.
+      // Logic: Inner -> Juz, Outer -> Surah.
+      buffer.writeln('<span class="page-header-right">$juzName</span>');
+      buffer.writeln('<span class="page-header-center">$pageNumber</span>');
+      buffer.writeln('<span class="page-header-left">$surahName</span>');
+    }
     buffer.writeln('</div>');
 
     if (includeTranslation &&
@@ -1005,9 +1015,9 @@ class MushafHtmlGenerator {
       buffer.writeln('<div class="page $pageClass">');
       buffer.writeln('<div class="page-content">');
       buffer.writeln('<div class="page-header">');
-      buffer.writeln('<span class="page-header-surah"></span>');
-      buffer.writeln('<span class="page-header-number">فهرس السور</span>');
-      buffer.writeln('<span class="page-header-juz"></span>');
+      buffer.writeln('<span class="page-header-right"></span>');
+      buffer.writeln('<span class="page-header-center">فهرس السور</span>');
+      buffer.writeln('<span class="page-header-left"></span>');
       buffer.writeln('</div>');
 
       buffer.writeln('<div class="toc-wrapper">');
