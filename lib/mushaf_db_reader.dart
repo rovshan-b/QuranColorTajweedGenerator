@@ -1,6 +1,6 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'mushaf_db_initializer.dart';
-import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
+//import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 /// Represents a line in the Mushaf page layout
 class MushafLine {
