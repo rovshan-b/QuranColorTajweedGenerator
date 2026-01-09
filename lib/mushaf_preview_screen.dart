@@ -704,6 +704,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                         _saveSettings();
                       });
                     },
+                    onShowHelp: _showHelpDialog,
                     onReset: () {
                       setState(() {
                         _coverBackgroundColor = '#1a472a';
@@ -731,6 +732,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                         _saveSettings();
                       });
                     },
+                    onShowHelp: _showHelpDialog,
                     onReset: () {
                       setState(() {
                         _customSurahNames = {};
@@ -841,7 +843,7 @@ class _MushafPreviewScreenState extends State<MushafPreviewScreen> {
                         ),
                         Text(
                           _outputFormat == 'HTML'
-                              ? 'Configure layout and click "Generate HTML". Use browser\'s "Print" -> "Save as PDF" (Enable "Background graphics").'
+                              ? 'Configure layout and click "Generate HTML". Use browser\'s "Print" -> "Save as PDF" (Enable "Background graphics". Tested with Firefox and Chrome browsers).'
                               : 'Configure resolution (DPI) and click "Generate". The folder containing PNGs and glyphs.db will open.',
                           style:
                               Theme.of(context).textTheme.bodySmall?.copyWith(

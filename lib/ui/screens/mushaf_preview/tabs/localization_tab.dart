@@ -6,6 +6,7 @@ class LocalizationTab extends StatefulWidget {
   final ValueChanged<Map<int, String>> onSurahNamesChanged;
   final Map<String, String> customLocalizedLabels;
   final ValueChanged<Map<String, String>> onLocalizedLabelsChanged;
+  final Function(String, String) onShowHelp;
   final VoidCallback onReset;
 
   const LocalizationTab({
@@ -14,6 +15,7 @@ class LocalizationTab extends StatefulWidget {
     required this.onSurahNamesChanged,
     required this.customLocalizedLabels,
     required this.onLocalizedLabelsChanged,
+    required this.onShowHelp,
     required this.onReset,
   });
 
@@ -24,6 +26,16 @@ class LocalizationTab extends StatefulWidget {
 class _LocalizationTabState extends State<LocalizationTab> {
   late Map<int, TextEditingController> _surahControllers;
   late Map<String, TextEditingController> _labelControllers;
+
+  Widget _buildHelpIcon(String title, String helpText) {
+    return IconButton(
+      icon: const Icon(Icons.help_outline, size: 18),
+      onPressed: () => widget.onShowHelp(title, helpText),
+      tooltip: 'Help',
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+    );
+  }
 
   // Known tajweed keys to expose
   static const List<Map<String, String>> _ruleKeys = [
@@ -117,7 +129,11 @@ class _LocalizationTabState extends State<LocalizationTab> {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
-        _buildSectionHeader('Tajweed Rule Names'),
+        _buildSectionHeader(
+          'Tajweed Rule Names',
+          _buildHelpIcon('Tajweed Localization',
+              'Customize the labels used for each Tajweed rule in the legend at the bottom of the page. This is useful for translating into other languages.'),
+        ),
         const SizedBox(height: 8),
         Card(
           child: Padding(
@@ -130,7 +146,11 @@ class _LocalizationTabState extends State<LocalizationTab> {
           ),
         ),
         const SizedBox(height: 24),
-        _buildSectionHeader('Surah Translation Names'),
+        _buildSectionHeader(
+          'Surah Translation Names',
+          _buildHelpIcon('Surah Localization',
+              'Customize how Surah names appear in the Table of Contents and Page Headers. By default, these are shown in English transliteration / translation.'),
+        ),
         const SizedBox(height: 8),
         Card(
           child: ListView.separated(
@@ -157,7 +177,7 @@ class _LocalizationTabState extends State<LocalizationTab> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, [Widget? trailing]) {
     return Row(
       children: [
         Text(title,
@@ -165,6 +185,10 @@ class _LocalizationTabState extends State<LocalizationTab> {
                 .textTheme
                 .titleMedium
                 ?.copyWith(fontWeight: FontWeight.bold)),
+        if (trailing != null) ...[
+          const SizedBox(width: 8),
+          trailing,
+        ],
         const Expanded(child: Divider(indent: 12)),
       ],
     );

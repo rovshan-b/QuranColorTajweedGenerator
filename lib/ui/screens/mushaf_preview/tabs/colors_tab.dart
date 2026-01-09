@@ -13,6 +13,7 @@ class ColorsTab extends StatelessWidget {
   final Function(String) onBaseTextColorChanged;
   final Function(TajweedRule, String) onTajweedColorChanged;
   final Function(TajweedRule, bool) onTajweedHighlightingChanged;
+  final Function(String, String) onShowHelp;
   final VoidCallback onReset;
 
   const ColorsTab({
@@ -25,8 +26,19 @@ class ColorsTab extends StatelessWidget {
     required this.onBaseTextColorChanged,
     required this.onTajweedColorChanged,
     required this.onTajweedHighlightingChanged,
+    required this.onShowHelp,
     required this.onReset,
   });
+
+  Widget _buildHelpIcon(String title, String helpText) {
+    return IconButton(
+      icon: const Icon(Icons.help_outline, size: 18),
+      onPressed: () => onShowHelp(title, helpText),
+      tooltip: 'Help',
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,18 +85,50 @@ class ColorsTab extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: ColorInput(
-                          label: 'Cover Background',
-                          value: coverBackgroundColor,
-                          onChanged: onCoverBackgroundColorChanged,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text('Cover Background',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(width: 8),
+                                _buildHelpIcon('Cover Background',
+                                    'The solid color used for the Mushaf cover page background.'),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ColorInput(
+                              label: 'Cover Background',
+                              value: coverBackgroundColor,
+                              onChanged: onCoverBackgroundColorChanged,
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: ColorInput(
-                          label: 'Base Text Color',
-                          value: baseTextColor,
-                          onChanged: onBaseTextColorChanged,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text('Base Text Color',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(width: 8),
+                                _buildHelpIcon('Base Text Color',
+                                    'The color used for standard Arabic text that does not fall under any Tajweed rule (typically black or dark grey).'),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ColorInput(
+                              label: 'Base Text Color',
+                              value: baseTextColor,
+                              onChanged: onBaseTextColorChanged,
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -100,9 +144,16 @@ class ColorsTab extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Tajweed Rules Highlighting',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  Row(
+                    children: [
+                      Text(
+                        'Tajweed Rules Highlighting',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildHelpIcon('Tajweed Highlighting',
+                          'Each rule can have its own unique color. You can also toggle the "Highlight" switch to disable coloring for a specific rule, which will make it use the "Base Text Color" instead.'),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Text(

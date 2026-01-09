@@ -83,7 +83,14 @@ class TranslationTab extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   SwitchListTile(
-                    title: const Text('Include translation (outer column)'),
+                    title: Row(
+                      children: [
+                        const Text('Include translation (outer column)'),
+                        const SizedBox(width: 8),
+                        _buildHelpIcon('Full Translation',
+                            'Enables a side column containing the full ayah translation. This mode is currently optimized for HTML (PDF) output and will adjust the Arabic text size to fit both columns on a single page.'),
+                      ],
+                    ),
                     subtitle: outputFormat == 'PNG'
                         ? const Text(
                             'Translation column is only supported in HTML format',
@@ -165,13 +172,13 @@ class TranslationTab extends StatelessWidget {
                       children: [
                         Expanded(
                           child: NumberInput(
-                            label: 'Width Fraction',
+                            label: 'Width (factor)',
                             value: selectedPageSize.translationWidthFraction,
                             isDecimal: true,
                             enabled:
                                 includeTranslation && outputFormat == 'HTML',
-                            suffix: _buildHelpIcon('Width Fraction',
-                                'Percentage of page width allocated to the translation column.'),
+                            suffix: _buildHelpIcon('Width Fraction (factor)',
+                                'The fraction of the page width dedicated to the translation column (e.g., 0.25 = 25%).'),
                             onChanged: (v) => onPageSizeChanged(
                                 selectedPageSize.copyWith(
                                     translationWidthFraction: v.toDouble())),
@@ -180,13 +187,13 @@ class TranslationTab extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: NumberInput(
-                            label: 'Arabic Scale',
+                            label: 'Arabic Scale (factor)',
                             value: selectedPageSize.translationArabicScale,
                             isDecimal: true,
                             enabled:
                                 includeTranslation && outputFormat == 'HTML',
-                            suffix: _buildHelpIcon('Arabic Scale',
-                                'How much to shrink the Arabic text when translation is enabled.'),
+                            suffix: _buildHelpIcon('Arabic Scale (factor)',
+                                'A scaling multiplier applied to Arabic text to make room for the translation column. 0.8 means 80% of original size.'),
                             onChanged: (v) => onPageSizeChanged(
                                 selectedPageSize.copyWith(
                                     translationArabicScale: v.toDouble())),
@@ -200,8 +207,8 @@ class TranslationTab extends StatelessWidget {
                                 selectedPageSize.translationFontSize.toDouble(),
                             enabled:
                                 includeTranslation && outputFormat == 'HTML',
-                            suffix: _buildHelpIcon('Font Size (px)',
-                                'Size of the translation text in pixels.'),
+                            suffix: _buildHelpIcon('Translation Font Size (px)',
+                                'The base font size in pixels for the translation column text.'),
                             onChanged: (v) => onPageSizeChanged(selectedPageSize
                                 .copyWith(translationFontSize: v.toInt())),
                           ),
@@ -213,13 +220,13 @@ class TranslationTab extends StatelessWidget {
                       children: [
                         Expanded(
                           child: NumberInput(
-                            label: 'Line Height',
+                            label: 'Line Height (factor)',
                             value: selectedPageSize.translationLineHeight,
                             isDecimal: true,
                             enabled:
                                 includeTranslation && outputFormat == 'HTML',
-                            suffix: _buildHelpIcon('Line Height',
-                                'Spacing between lines of translation text.'),
+                            suffix: _buildHelpIcon('Line Height (factor)',
+                                'Vertical spacing multiplier between lines of translated text.'),
                             onChanged: (v) => onPageSizeChanged(selectedPageSize
                                 .copyWith(translationLineHeight: v.toDouble())),
                           ),
@@ -227,13 +234,13 @@ class TranslationTab extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: NumberInput(
-                            label: 'Compact Threshold',
+                            label: 'Compact Limit (count)',
                             value: selectedPageSize.translationCompactThreshold
                                 .toDouble(),
                             enabled:
                                 includeTranslation && outputFormat == 'HTML',
-                            suffix: _buildHelpIcon('Compact Threshold',
-                                'Character count above which translation switches to inline mode.'),
+                            suffix: _buildHelpIcon('Compact Limit (count)',
+                                'If the total character count of translations on a page exceeds this number, the layout switches to a "compact" mode (inline text) to ensure everything fits on one physical page.'),
                             onChanged: (v) => onPageSizeChanged(
                                 selectedPageSize.copyWith(
                                     translationCompactThreshold: v.toInt())),
@@ -242,7 +249,14 @@ class TranslationTab extends StatelessWidget {
                       ],
                     ),
                     SwitchListTile(
-                      title: const Text('Justify translation text'),
+                      title: Row(
+                        children: [
+                          const Text('Justify translation text'),
+                          const SizedBox(width: 8),
+                          _buildHelpIcon('Justify Text',
+                              'If enabled, the translation text stretches to fill the entire column width (flush left and right edges).'),
+                        ],
+                      ),
                       value: justifyTranslation,
                       contentPadding: EdgeInsets.zero,
                       onChanged: (includeTranslation && outputFormat == 'HTML')
@@ -267,7 +281,14 @@ class TranslationTab extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   SwitchListTile(
-                    title: const Text('Include word-by-word translation'),
+                    title: Row(
+                      children: [
+                        const Text('Include word-by-word translation'),
+                        const SizedBox(width: 8),
+                        _buildHelpIcon('Word-by-Word (WBW)',
+                            'Places a small translation directly under each individual Arabic word. This significantly increases the vertical height of each line.'),
+                      ],
+                    ),
                     subtitle: const Text(
                         'Displays translation under each Arabic word.\nTranslations contributed by "Greentech Apps Foundation".'),
                     isThreeLine: true,
@@ -306,8 +327,8 @@ class TranslationTab extends StatelessWidget {
                             label: 'Font Size (px)',
                             value: selectedPageSize.wbwFontSize.toDouble(),
                             enabled: includeWbw,
-                            suffix: _buildHelpIcon('Font Size (px)',
-                                'Size of the word-by-word translation text in pixels.'),
+                            suffix: _buildHelpIcon('WBW Font Size (px)',
+                                'Size in pixels of the small translation text appearing under words.'),
                             onChanged: (v) => onPageSizeChanged(selectedPageSize
                                 .copyWith(wbwFontSize: v.toInt())),
                           ),
@@ -315,12 +336,12 @@ class TranslationTab extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: NumberInput(
-                            label: 'Arabic Scale',
+                            label: 'Arabic Scale (factor)',
                             value: selectedPageSize.wbwArabicScale,
                             isDecimal: true,
                             enabled: includeWbw,
-                            suffix: _buildHelpIcon('Arabic Scale',
-                                'How much to shrink the Arabic text when word-by-word translation is enabled.'),
+                            suffix: _buildHelpIcon('Arabic Scale (factor)',
+                                'Scaling multiplier applied to the main Arabic text to make room for word-by-word labels.'),
                             onChanged: (v) => onPageSizeChanged(selectedPageSize
                                 .copyWith(wbwArabicScale: v.toDouble())),
                           ),
@@ -328,12 +349,12 @@ class TranslationTab extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: NumberInput(
-                            label: 'Arabic Line Height',
+                            label: 'Line Height (factor)',
                             value: selectedPageSize.wbwArabicLineHeight,
                             isDecimal: true,
                             enabled: includeWbw,
-                            suffix: _buildHelpIcon('Arabic Line Height',
-                                'Line height for the Arabic text when word-by-word translation is enabled.'),
+                            suffix: _buildHelpIcon('Arabic Row Height (factor)',
+                                'Line height multiplier for the Arabic text in WBW mode. This usually needs to be higher (e.g. 1.5 - 2.0) to avoid overlapping with translations.'),
                             onChanged: (v) => onPageSizeChanged(selectedPageSize
                                 .copyWith(wbwArabicLineHeight: v.toDouble())),
                           ),
@@ -345,12 +366,12 @@ class TranslationTab extends StatelessWidget {
                       children: [
                         Expanded(
                           child: NumberInput(
-                            label: 'Trans. Line Height',
+                            label: 'Trans. Height (factor)',
                             value: selectedPageSize.wbwTranslationLineHeight,
                             isDecimal: true,
                             enabled: includeWbw,
-                            suffix: _buildHelpIcon('Trans. Line Height',
-                                'Line height for the word-by-word translation text.'),
+                            suffix: _buildHelpIcon('WBW Line Height (factor)',
+                                'Line height multiplier for the small translated labels.'),
                             onChanged: (v) => onPageSizeChanged(
                                 selectedPageSize.copyWith(
                                     wbwTranslationLineHeight: v.toDouble())),
@@ -363,8 +384,8 @@ class TranslationTab extends StatelessWidget {
                             value: selectedPageSize.wbwMaxWidthMm,
                             isDecimal: true,
                             enabled: includeWbw,
-                            suffix: _buildHelpIcon('Max Width (mm)',
-                                'Maximum width allowed for a single word-by-word block in millimeters.'),
+                            suffix: _buildHelpIcon('Max Label Width (mm)',
+                                'Maximum width in millimeters allowed for a single word\'s translation before it wraps to a new line.'),
                             onChanged: (v) => onPageSizeChanged(selectedPageSize
                                 .copyWith(wbwMaxWidthMm: v.toDouble())),
                           ),
