@@ -827,19 +827,21 @@ class MushafHtmlGenerator {
       {'rule': TajweedRule.qalqala, 'key': 'rule_qalqala'},
       {'rule': TajweedRule.ghunna, 'key': 'rule_ghunna'},
       {'rule': TajweedRule.prolonging, 'key': 'rule_madd'},
-    ];
+    ].where((entry) {
+      final rule = entry['rule'] as TajweedRule;
+      return tajweedHighlighting?[rule] ?? true;
+    }).toList();
+
+    if (legendEntries.isEmpty) return '';
 
     final buffer = StringBuffer();
     buffer.writeln('<div class="legend">');
 
     for (final entry in legendEntries) {
-      final rule = entry['rule'] as TajweedRule;
       final key = entry['key'] as String;
       final label = _getLabel(key, lang);
-      final isHighlighted = tajweedHighlighting?[rule] ?? true;
-      final color = isHighlighted
-          ? (tajweedColors?[rule] ?? tajweedRuleToHex(rule))
-          : baseTextColor;
+      final rule = entry['rule'] as TajweedRule;
+      final color = tajweedColors?[rule] ?? tajweedRuleToHex(rule);
 
       buffer.writeln('  <div class="legend-item">');
       buffer.writeln(

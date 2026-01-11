@@ -16,6 +16,9 @@ Get the latest version for your operating system:
 - **[Windows Store](https://apps.microsoft.com/detail/9pc7hc5dhmd2?hl=en-US&gl=FI)**
 
 - **[Download for macOS (.dmg)](https://github.com/rovshan-b/QuranColorTajweedGenerator/blob/master/INSTALLERS/macOS/MushafGenerator-Installer.dmg?raw=true)**
+- **[Apple App Store](https://apps.apple.com/us/app/mushaf-generator/id6757530734)**
+
+**[User Guide](https://sengineer.substack.com/p/mushaf-with-tajweed-colors)**
 
 ## Screenshots
 

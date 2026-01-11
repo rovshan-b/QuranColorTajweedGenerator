@@ -700,7 +700,12 @@ class MushafImageGenerator {
       {'rule': TajweedRule.qalqala, 'key': 'rule_qalqala'},
       {'rule': TajweedRule.ghunna, 'key': 'rule_ghunna'},
       {'rule': TajweedRule.prolonging, 'key': 'rule_madd'},
-    ];
+    ].where((entry) {
+      final rule = entry['rule'] as TajweedRule;
+      return tajweedHighlighting?[rule] ?? true;
+    }).toList();
+
+    if (legendEntries.isEmpty) return;
 
     final legendFontSize = pageSize.legendFontSize * scale;
     final legendColorSize = pageSize.legendColorSize * scale;
