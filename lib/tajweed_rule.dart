@@ -58,12 +58,12 @@ enum TajweedRule {
   final Color? _color;
   final Color? _darkThemeColor;
 
-  // A rule with one colour reads no theme (callers may hold a context that
-  // is no longer in the tree).
-  Color? color(BuildContext context) =>
-      _darkThemeColor == null ? _color : colorFor(Theme.of(context).brightness);
+  Color? color(BuildContext context) {
+    if (_darkThemeColor == null) {
+      return _color;
+    }
 
-  /// The colour on a light or a dark page.
-  Color? colorFor(Brightness brightness) =>
-      brightness == Brightness.dark ? _darkThemeColor ?? _color : _color;
+    bool isDarkTheme = Theme.of(context).brightness == Brightness.dark;
+    return isDarkTheme ? _darkThemeColor : _color;
+  }
 }

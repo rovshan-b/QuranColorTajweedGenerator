@@ -1,17 +1,32 @@
-// Generates the app's tajweed mushaf pages (PNG + glyphs.db) headless.
+// Generates the Tanzil app's tajweed mushaf pages (PNG + glyphs.db) headless.
 // Not part of the normal run: APP_PAGES_OUT must be set.
-//   APP_PAGES_OUT=<dir> APP_PAGES_FROM=1 APP_PAGES_TO=604 APP_PAGES_FONT=24 \
-//   APP_PAGES_DARK=0 flutter test test/tools/app_pages_test.dart
+//
+// The settings reproduce the app's set exactly (all 77,432 glyph boxes of
+// with_tajweed.zip): A5 widened to 148 x 225 mm, 200 dpi, font 29, surah
+// font 18, line height 1.0, 3 mm side margins, no header or legend.
+//
+//   APP_PAGES_OUT=<light> flutter test test/tools/app_pages_test.dart
+//   APP_PAGES_OUT=<dark> APP_PAGES_DARK=1 flutter test test/tools/app_pages_test.dart
+//   (APP_PAGES_FROM / APP_PAGES_TO for a range; APP_PAGES_FONT,
+//   APP_PAGES_SURAH_FONT, APP_PAGES_MARGIN_MM to experiment)
+//
+// The dark run gives the same glyphs.db as the light one. Then, for the zip
+// the app downloads (unpacked into the mushaf's folder):
+//   images/pageNNN.webp        <- light pageNNN.png
+//   images/page_dark_NNN.webp  <- dark pageNNN.png
+//   databases/glyphs.db
+// each page by `cwebp -q 90 -m 6` (how-to-convert-pngs-to-webp.txt). A new
+// set goes to a new zip name and a new folder in the app (with_tajweed_v2.zip):
+// older app versions keep downloading theirs.
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mushaf_generator/mushaf_db_initializer.dart';
 import 'package:mushaf_generator/mushaf_db_reader.dart';
 import 'package:mushaf_generator/mushaf_image_generator.dart';
 import 'package:mushaf_generator/mushaf_page_config.dart';
-import 'package:mushaf_generator/tajweed_rule.dart';
+import 'package:mushaf_generator/tajweed_color_mapper.dart';
 
 void main() {
   final env = Platform.environment;
@@ -66,12 +81,7 @@ void main() {
       showDecorations: false,
       baseTextColor: dark ? '#FFFFFF' : '#000000',
       // The app's own tajweed colours for the page's brightness.
-      tajweedColors: {
-        for (final rule in TajweedRule.values)
-          if (rule != TajweedRule.none)
-            rule:
-                _hex(rule.colorFor(dark ? Brightness.dark : Brightness.light)!),
-      },
+      tajweedColors: dark ? defaultDarkTajweedColors : defaultTajweedColors,
     );
     await generator.generateImages(
       startPage: int.parse(env['APP_PAGES_FROM'] ?? '1'),
@@ -80,6 +90,3 @@ void main() {
     );
   }, skip: out == null ? 'set APP_PAGES_OUT' : false, timeout: Timeout.none);
 }
-
-String _hex(Color c) =>
-    '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';

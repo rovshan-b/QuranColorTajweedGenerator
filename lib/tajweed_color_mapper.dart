@@ -21,6 +21,23 @@ const Map<TajweedRule, String> defaultTajweedColors = {
   TajweedRule.none: '#000000',
 };
 
+/// The Tanzil app's dark-mode tajweed colours (TajweedRule's
+/// darkThemeColor, else its colour), for pages read on a dark background.
+const Map<TajweedRule, String> defaultDarkTajweedColors = {
+  TajweedRule.LAFZATULLAH: '#81C784',
+  TajweedRule.izhar: '#6FF0F5',
+  TajweedRule.ikhfaa: '#FA4444',
+  TajweedRule.idghamWithGhunna: '#F06292',
+  TajweedRule.iqlab: '#2196F3',
+  TajweedRule.qalqala: '#D6F046',
+  TajweedRule.idghamWithoutGhunna: '#9E9E9E',
+  TajweedRule.ghunna: '#FF9800',
+  TajweedRule.prolonging: '#BFA5EC',
+  TajweedRule.silentLetter: '#9E9E9E',
+  TajweedRule.hamzatulWasli: '#9E9E9E',
+  TajweedRule.none: '#FFFFFF',
+};
+
 const String defaultCoverBackgroundColor = '#1a472a';
 const String defaultBaseTextColor = '#000000';
 
