@@ -4,12 +4,14 @@
 //   APP_PAGES_DARK=0 flutter test test/tools/app_pages_test.dart
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mushaf_generator/mushaf_db_initializer.dart';
 import 'package:mushaf_generator/mushaf_db_reader.dart';
 import 'package:mushaf_generator/mushaf_image_generator.dart';
 import 'package:mushaf_generator/mushaf_page_config.dart';
+import 'package:mushaf_generator/tajweed_rule.dart';
 
 void main() {
   final env = Platform.environment;
@@ -24,7 +26,10 @@ void main() {
       (call) async => support.path,
     );
     const fonts = {
-      'Kitab': ['assets/fonts/Kitab-Regular.ttf', 'assets/fonts/Kitab-Bold.ttf'],
+      'Kitab': [
+        'assets/fonts/Kitab-Regular.ttf',
+        'assets/fonts/Kitab-Bold.ttf'
+      ],
       'Amiri': ['assets/fonts/AmiriQuran.ttf'],
       'Basmala': ['assets/fonts/ArabicSymbols.otf'],
     };
@@ -60,6 +65,13 @@ void main() {
       dpi: 200,
       showDecorations: false,
       baseTextColor: dark ? '#FFFFFF' : '#000000',
+      // The app's own tajweed colours for the page's brightness.
+      tajweedColors: {
+        for (final rule in TajweedRule.values)
+          if (rule != TajweedRule.none)
+            rule:
+                _hex(rule.colorFor(dark ? Brightness.dark : Brightness.light)!),
+      },
     );
     await generator.generateImages(
       startPage: int.parse(env['APP_PAGES_FROM'] ?? '1'),
@@ -68,3 +80,6 @@ void main() {
     );
   }, skip: out == null ? 'set APP_PAGES_OUT' : false, timeout: Timeout.none);
 }
+
+String _hex(Color c) =>
+    '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';

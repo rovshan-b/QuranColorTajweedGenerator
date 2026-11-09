@@ -1,4 +1,5 @@
 import 'tajweed_rule.dart';
+
 import 'tajweed_subrule.dart';
 
 class TajweedToken implements Comparable<TajweedToken> {
@@ -13,14 +14,14 @@ class TajweedToken implements Comparable<TajweedToken> {
   final int endIx;
 
   const TajweedToken(
-      this.rule,
-      this.subrule,
-      this.subruleSubindex,
-      this.text,
-      this.startIx,
-      this.endIx,
-      this.matchGroup,
-      );
+    this.rule,
+    this.subrule,
+    this.subruleSubindex,
+    this.text,
+    this.startIx,
+    this.endIx,
+    this.matchGroup,
+  );
 
   bool isRule() {
     return rule != TajweedRule.none;
@@ -59,5 +60,12 @@ class TajweedToken implements Comparable<TajweedToken> {
   @override
   String toString() {
     return 'TajweedToken{ from: $startIx to: $endIx group: $rule subrule: $subrule subindex: $subruleSubindex text: \'$text\' matchGroup: $matchGroup }';
+  }
+
+  String toCode() {
+    //return "TajweedToken(${rule.toString()}, ${subrule != null ? subrule.toString() : 'null'}, ${subruleSubindex != null ? subruleSubindex.toString() : 'null'},'${text.replaceAll("'", "\\'")}', $startIx, $endIx, ${matchGroup != null ? "'${matchGroup!.replaceAll("'", "\\'")}'" : 'null'})";
+
+    //keep matchGroup null for now as it is not used during display
+    return "TajweedToken(${rule.toString()}, ${subrule != null ? subrule.toString() : 'null'}, ${subruleSubindex != null ? subruleSubindex.toString() : 'null'},'${text.replaceAll("'", "\\'")}', $startIx, $endIx, null)";
   }
 }

@@ -16,7 +16,7 @@ const Map<TajweedRule, String> defaultTajweedColors = {
   TajweedRule.idghamWithoutGhunna: '#9E9E9E',
   TajweedRule.ghunna: '#FF9800',
   TajweedRule.prolonging: '#8E64D6',
-  TajweedRule.alefTafreeq: '#9E9E9E',
+  TajweedRule.silentLetter: '#9E9E9E',
   TajweedRule.hamzatulWasli: '#9E9E9E',
   TajweedRule.none: '#000000',
 };

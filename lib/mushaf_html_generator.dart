@@ -125,8 +125,8 @@ class MushafHtmlGenerator {
         return 'ghunna';
       case TajweedRule.prolonging:
         return 'prolonging';
-      case TajweedRule.alefTafreeq:
-        return 'alef-tafreeq';
+      case TajweedRule.silentLetter:
+        return 'silent-letter';
       case TajweedRule.hamzatulWasli:
         return 'hamzatul-wasli';
       case TajweedRule.none:
