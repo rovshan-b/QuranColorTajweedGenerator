@@ -23,6 +23,31 @@ class TajweedToken implements Comparable<TajweedToken> {
     this.matchGroup,
   );
 
+  /// The part of this token from [from] to [to] (offsets in its text), with
+  /// the same rule.
+  TajweedToken piece(int from, int to) => TajweedToken(
+    rule,
+    subrule,
+    subruleSubindex,
+    text.substring(from, to),
+    startIx + from,
+    startIx + to,
+    matchGroup,
+  );
+
+  /// This token [by] characters further on in the aya.
+  TajweedToken moved(int by) => by == 0
+      ? this
+      : TajweedToken(
+          rule,
+          subrule,
+          subruleSubindex,
+          text,
+          startIx + by,
+          endIx + by,
+          matchGroup,
+        );
+
   bool isRule() {
     return rule != TajweedRule.none;
   }

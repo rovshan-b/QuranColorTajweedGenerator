@@ -16,12 +16,16 @@ class Tajweed {
   static const optionalSmallHighLetters = '$smallHighLetters?';
   static const smallHighLettersBetweenWords = smallHighLetters + r'?\u0020*';
 
-  // Pause marks where the reader may stop, and where the stop is coloured as
-  // in the printed mushafs: must stop ۘ, stopping preferred ۗ, either ۚ. Not
-  // joining preferred ۖ, nor do not stop ۙ, nor the paired ۛ: the usual reading
-  // stops at the second of a pair (2:2 فِیهِۛ), and no second word of the three
-  // pairs has a qalqala letter or an ivad alif.
-  static const stopMarks = r'[\u06D8\u06D7\u06DA]';
+  // The pause marks where the text is coloured as read stopping: must stop ۘ
+  // and stopping preferred ۗ. The reader stops there and starts the next word
+  // afresh, so each stretch between them is coloured as an aya of its own
+  // (tokenize): what the aya's end and start have, they have. Everywhere else
+  // the text is coloured as read joining, as the mark advises: either ۚ,
+  // joining preferred ۖ, do not stop ۙ, the paired ۛ. One reading per word:
+  // stopping and joining are never both heard (a tanween is said only when
+  // joining, a stopping qalqala only comes with the stop's sukun).
+  static const stopMarks = r'[\u06D8\u06D7]';
+  static final _readingBreak = RegExp('(?<=$stopMarks)\u0020');
   static const fathaKasraDammaWithoutTanvin = r'(\u064F|\u064E|\u0650)';
 
   static const fathaKasraDammaWithTanvin =
@@ -400,15 +404,12 @@ class Tajweed {
       r'(?<qalqala>((\u0642|\u0637|\u0628|\u062C|\u062F)\u0651?(\u0652|\u06E1|(' +
       fathaKasraDammaWithOrWithoutTanvin +
       r'?' +
+      // an iqlab meem and a stop mark may both follow (ۢ ۗ)
       smallHighLetters +
-      r'?' +
-      // the aya end, also before the sajda sign (وَٱقۡتَرِب ۩); never colouring it
-      r')(?=(\u0020\u06E9)?$)|' +
-      // a word's last letter before a stop mark (ٱلۡكِتَـٰبَۚ): stopping takes its
-      // vowel; never after fathatan, whose vowel stays (an alif follows anyway)
-      r'([\u064E\u064F\u0650\u064C\u064D\u08F1\u08F2]?[\u06E2\u06ED]?' +
-      stopMarks +
-      r')(?=\u0020))))';
+      r'{0,2}' +
+      // the aya end (also before the sajda sign, never colouring it: وَٱقۡتَرِب ۩)
+      // or a stop mark, which ends its stretch (tokenize)
+      r')(?=(\u0020\u06E9)?$))))';
 
   /*
   19-cu dərs
@@ -516,12 +517,13 @@ class Tajweed {
   */
   //putting small high letters together withing same group as ending Alef.
   //because currently flutter does not support coloring diacritics separately.
-  // Only where the reader stops: the aya end or a stop mark. Joined to the next
-  // word the alif is not read (رَغَدًا حَیۡثُ).
+  // Only where the reader stops: the aya end or a stop mark, which ends its
+  // stretch (tokenize). Joined to the next word the alif is not read (رَغَدًا
+  // حَیۡثُ).
   static const prolonging_ivad =
-      r'((\u064B|\u08F0|\u0654\u06E2|\u064E\u06E2)(?<prolonging_ivad>\u0627(' +
+      r'((\u064B|\u08F0|\u0654\u06E2|\u064E\u06E2)(?<prolonging_ivad>\u0627' +
       stopMarks +
-      r'(?=\u0020|$)|(?=(\u0020\u06E9)?$))))';
+      r'?(?=(\u0020\u06E9)?$)))';
 
   static const extensionByTwo =
       '$prolonging_byTwo_1_1|$prolonging_byTwo_1_2|$prolonging_byTwo_1_3|$prolonging_byTwo_1_4|$prolonging_byTwo_2|$prolonging_byTwo_3|$prolonging_lin|$prolonging_ivad';
@@ -578,14 +580,16 @@ class Tajweed {
       r')';
 
   //A madd letter with the madda sign at the aya end (the next aya starts with a
-  //hamza): the reader stops, so it is a natural madd (also after the plural's
-  //silent alif: ضَلُّوۤا۟, 20:92).
+  //hamza) or at a stop mark: the reader stops, so it is a natural madd (also
+  //after the plural's silent alif: ضَلُّوۤا۟, 20:92).
   static const prolonging_byTwo_5 =
       r'((?<prolonging_byTwo_5>' +
       maddLetters +
       r'\u06E4)(\u0627' +
       sukoon +
-      r')?$)';
+      r')?' +
+      stopMarks +
+      r'?$)';
 
   static const prolonging_munfasil =
       '$prolonging_munfasil_1|$prolonging_byTwo_5';
@@ -630,7 +634,10 @@ class Tajweed {
       smallHighLetters +
       r'?))';
 
-  static const hamzatulWasli = r'([^^](?<hamzatulWasli>\u0671))';
+  // Not where the reading starts: an aya's (or a stretch's, tokenize) first
+  // letter, also after the hizb quarter sign (37:22 ۞ ٱحۡشُرُوا۟), is said.
+  static const hamzatulWasli =
+      r'((?<!^|^\u06DE\u0020)(?<hamzatulWasli>\u0671))';
 
   // Letters written but not read: marked with the small round zero
   // (أُو۟لَـٰۤىِٕكَ; the alif after a plural waw is matched by silentAlifAfterWaw too,
@@ -670,25 +677,39 @@ class Tajweed {
     return tokensToWords(tokenize(AyaText, sura, aya));
   }
 
+  static final _rules = [for (final r in allRules) RegExp(r, unicode: true)];
+  static final _muqattaRule = RegExp(prolonging_lazim_3, unicode: true);
+
   static List<TajweedToken> tokenize(String AyaText, int sura, int aya) {
     List<TajweedToken> results = [];
-    for (int j = 0; j < allRules.length; ++j) {
-      final regexp = RegExp(allRules[j], unicode: true);
-      results.addAll(tokenizeByRule(regexp, AyaText));
+    // Each stretch between stop marks is read, so coloured, as an aya of its
+    // own: no rule joins it to the next, its end is read stopping and the next
+    // starts afresh (stopMarks). The space after the mark belongs to neither.
+    var from = 0;
+    for (final end in [
+      ..._readingBreak.allMatches(AyaText).map((m) => m.start),
+      AyaText.length,
+    ]) {
+      final stretch = AyaText.substring(from, end);
+      for (final regexp in _rules) {
+        for (final t in tokenizeByRule(regexp, stretch)) {
+          results.add(t.moved(from));
+        }
+      }
+      from = end + 1;
     }
 
     final muqattaEnd = isMuqattaAya(sura, aya);
     if (muqattaEnd > -1) {
       results.addAll(
         tokenizeByRule(
-          RegExp(prolonging_lazim_3, unicode: true),
+          _muqattaRule,
           muqattaEnd == 0 ? AyaText : AyaText.substring(0, muqattaEnd),
         ),
       );
     }
 
     applyIzharMutlaq(AyaText, sura, aya, results);
-    splitStopQalqala(results);
 
     if (results.isEmpty) return [plainAya(AyaText)];
 
@@ -815,17 +836,8 @@ class Tajweed {
       var atIx = token.startIx;
       for (int i = 0; i < parts.length; ++i) {
         var part = parts[i];
-        list.add(
-          TajweedToken(
-            token.rule,
-            token.subrule,
-            token.subruleSubindex,
-            part,
-            atIx,
-            atIx + part.length,
-            token.matchGroup,
-          ),
-        );
+        final from = atIx - token.startIx;
+        list.add(token.piece(from, from + part.length));
         if (i < parts.length - 1) {
           list.add(
             TajweedToken(
@@ -1042,17 +1054,7 @@ class Tajweed {
     final out = <TajweedToken>[];
     void piece(TajweedToken t, int from, int to) {
       if (t.text.substring(from, to).trim().isEmpty) return;
-      out.add(
-        TajweedToken(
-          t.rule,
-          t.subrule,
-          t.subruleSubindex,
-          t.text.substring(from, to),
-          t.startIx + from,
-          t.startIx + to,
-          t.matchGroup,
-        ),
-      );
+      out.add(t.piece(from, to));
     }
 
     for (final t in tokens) {
@@ -1068,55 +1070,6 @@ class Tajweed {
       }
     }
     return out;
-  }
-
-  /// A word's last qalqala letter before a stop mark whose tanween also has a
-  /// noon rule (غَضَبࣲۚ وَلِلۡكَـٰفِرِینَ, 2:90): stopping, the letter has qalqala;
-  /// joining, the tanween is read by the noon rule. Both are shown, as in the
-  /// printed mushafs: the letter (and a shadda right on it) takes qalqala, the
-  /// tanween mark onward keeps the noon rule.
-  static void splitStopQalqala(List<TajweedToken> tokens) {
-    const noonRules = {
-      TajweedRule.izhar,
-      TajweedRule.ikhfaa,
-      TajweedRule.idghamWithGhunna,
-      TajweedRule.idghamWithoutGhunna,
-      TajweedRule.iqlab,
-    };
-    for (final q
-        in tokens.where((t) => t.rule == TajweedRule.qalqala).toList()) {
-      final n = tokens
-          .where((t) => noonRules.contains(t.rule) && t.startIx == q.startIx)
-          .firstOrNull;
-      if (n == null) continue;
-      final cut = q.text.length > 1 && q.text[1] == '\u0651' ? 2 : 1;
-      if (n.text.length <= cut) continue;
-      tokens
-        ..remove(q)
-        ..remove(n)
-        ..add(
-          TajweedToken(
-            q.rule,
-            q.subrule,
-            q.subruleSubindex,
-            q.text.substring(0, cut),
-            q.startIx,
-            q.startIx + cut,
-            q.matchGroup,
-          ),
-        )
-        ..add(
-          TajweedToken(
-            n.rule,
-            n.subrule,
-            n.subruleSubindex,
-            n.text.substring(cut),
-            n.startIx + cut,
-            n.endIx,
-            n.matchGroup,
-          ),
-        );
-    }
   }
 
   ///returns positions until which Muqatta continues, or 0 if continues until end. -1 if not Muqatta aya.
